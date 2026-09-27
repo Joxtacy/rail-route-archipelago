@@ -31,6 +31,9 @@ namespace RailRouteArchipelago.Net
         private readonly ArchipelagoSession session;
         private bool closed;
 
+        // Network thread only. MultiClient raises the packets of one message in order on one thread.
+        private bool previousWasConnected;
+
         public ApSession(MainThreadQueue queue, ServerAddress address, string slot, string password)
         {
             this.queue = queue;
@@ -152,9 +155,6 @@ namespace RailRouteArchipelago.Net
             Notify.Side("Archipelago connection failed – see Player.log");
             Disconnect();
         }
-
-        // Network thread only. MultiClient raises the packets of one message in order on one thread.
-        private bool previousWasConnected;
 
         private void OnPacketReceived(ArchipelagoPacketBase packet)
         {

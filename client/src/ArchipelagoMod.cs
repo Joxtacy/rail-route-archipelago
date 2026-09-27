@@ -34,11 +34,11 @@ namespace RailRouteArchipelago
             if (PatchManager.Applied && !debugKeyInstalled)
             {
                 DebugReceiveKey.Install();
-                ArchipelagoPump.Install();
                 debugKeyInstalled = true;
             }
             if (PatchManager.Applied)
             {
+                ArchipelagoPump.Install();
                 // Subscribed once here so the first level's grants are seen; OnContextChanged re-attaches
                 // only if a new context brings a different EventManager.
                 GameGrantObserver.Attach(Ctx.Deps?.EventManager);
