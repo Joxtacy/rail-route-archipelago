@@ -51,6 +51,19 @@
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <!-- Not bundled with the game; shipped next to the mod DLL. -->
     <PackageReference Include="Lib.Harmony" Version="2.4.2" />
+    <!--
+      Archipelago client library. Its lib/ folders bundle an unsigned Newtonsoft.Json 11, which must not
+      enter the build or the mod folder: at runtime the library binds to the game's Newtonsoft.Json 13
+      (see NewtonsoftBinding). So the package contributes no assets and the net45 DLL is referenced directly.
+    -->
+    <PackageReference Include="Archipelago.MultiClient.Net" Version="6.7.1" ExcludeAssets="all" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Archipelago.MultiClient.Net">
+      <HintPath>$(PkgArchipelago_MultiClient_Net)/lib/net45/Archipelago.MultiClient.Net.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Game assemblies: compile against them, never copy them into the mod folder. -->
@@ -85,7 +98,7 @@
   <!-- Copy the built mod into the game's mods folder: mods/RailRouteArchipelago/RailRouteArchipelago.dll -->
   <Target Name="DeployMod" AfterTargets="Build" Condition="'$(DeployMod)' != 'false' And '$(RailRouteModsDir)' != ''">
     <ItemGroup>
-      <ModFiles Include="$(TargetDir)$(AssemblyName).dll;$(TargetDir)$(AssemblyName).pdb;$(TargetDir)0Harmony.dll" />
+      <ModFiles Include="$(TargetDir)$(AssemblyName).dll;$(TargetDir)$(AssemblyName).pdb;$(TargetDir)0Harmony.dll;$(TargetDir)Archipelago.MultiClient.Net.dll;$(TargetDir)Archipelago.MultiClient.Net.pdb" />
     </ItemGroup>
     <Copy SourceFiles="@(ModFiles)" DestinationFolder="$(RailRouteModsDir)/$(AssemblyName)" SkipUnchangedFiles="true" Condition="Exists('%(FullPath)')" />
     <Message Importance="high" Text="Deployed $(AssemblyName) to $(RailRouteModsDir)/$(AssemblyName)" />

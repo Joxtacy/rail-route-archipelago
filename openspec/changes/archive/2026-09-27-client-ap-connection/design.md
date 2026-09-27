@@ -76,14 +76,16 @@ Connect and login run as tasks (`ConnectAsync` followed by `LoginAsync` with `It
 
 ### D4: Items come from `ReceivedItems` packets, and index 0 means "replace everything"
 - The client handles `ReceivedItemsPacket` from `Socket.PacketReceived` rather than the per-item `ItemReceived` event, because the packet carries the `Index` that tells a full list apart from an increment.
-  - `Index == 0`: this is the full list, sent after login or after a sync. On the main thread, the client clears the received counts only (not the game grants) and applies every item silently. Then it shows one "Restored N items" notification, or none when N is 0.
+  - `Index == 0`: this is the full list, sent after login or after a sync. On the main thread, the client clears the received counts only (not the game grants) and applies the list.
+    - Right after the `Connected` packet it is the replay: every item is applied silently, followed by one "Restored N items" notification. The server only sends it there when the slot has items (`MultiServer.py`, the `Connect` reply), and MultiClient raises one message's packets in order on one thread, so "the packet right after `Connected`" identifies it.
+    - Anywhere else, the items the client had already applied (`ItemSync.Known`) are silent and the rest get popups. This case is the first item of a slot that had none at login, which also arrives at index 0 (found in test-round step 2), or a resync reply.
   - `Index == expected`: the client applies each item normally, with popups, and advances `expected`.
   - Any other index: the client logs it and sends a `Sync` packet. The server answers with an index-0 full list, which replaces the state.
 
   This keeps `ReceivedItems` equal to the server's list, whether items arrive late, twice, or out of order.
 - Mapping is by name: `Items.GetItemName(id, "Rail Route")` gives the datapackage name, and `Core/ItemNames` maps the name to a game upgrade `Id`. For a levelled upgrade, that's the first item of its chain, and `UpgradeReceiver` already resolves the next level. For Custom Contracts it's `custom_contracts`, and the router passes the variant the level shows (`custom_contracts_alt` with Happy Passengers active), because `EffectState` keys both variants the same way. Filler names are logged and ignored. Unknown names warn with the ID.
 - *Alternative: hard-code AP item IDs in the client.* That would copy a second table out of `data.py`. Names are already the documented contract (the location table works the same way), and the datapackage exists to map them. The new "Item names" README table records the name, the item ID and the game `Id`s. `ItemNamesTests` checks names and game `Id`s against it. The IDs are there for readers and trackers.
-- `UpgradeReceiver.Receive(item, silent)`: `silent` skips the `UnlockPopup` and still applies the side effects and raises `ResearchCompleted` for the UI refresh. The log line stays, so the replay is visible in `Player.log`.
+- `UpgradeReceiver.Receive(item, silent)`: `silent` skips the `UnlockPopup` and still applies the side effects and raises `ResearchCompleted` for the UI refresh. The log line stays, so the replay is visible in `Player.log`. When a non-silent receive can't show the popup (the system upgrades menu is open, which is always the case for the item from one's own purchase), it shows a side notification "Received <upgrade> from <player>" instead (added after test-round step 2).
 
 ### D5: Checks resolve through the datapackage; the resend on connect is derived from slot flags
 - `IUpgradePurchaseHandler` stays as it is. `SlotPurchaseHandler` keeps its current behavior and also calls `CheckSender.Send(locationName)`. It does nothing when not connected, because the resend covers that case (spec: "Buy a slot while not connected").
@@ -106,6 +108,8 @@ It runs on the main thread right after login:
 
 Each mismatch gives one warning line, and together they give one notification. The client doesn't disconnect: the player may be testing deliberately, and M5's connect screen can refuse.
 
+A **map** mismatch also blocks every check for the connection, both the resend and live sends. The test round showed why: a Prague save auto-loaded at startup resent its 6 bought slots into a Haarlem seed and checked those locations for good. A DLC mismatch doesn't block. Expect Delays locations that aren't in the seed are already skipped by the `AllLocations` check, and both Custom Contracts variants are one location. Received items still apply either way, since their effects last only for the level.
+
 ### D8: Diagnostics for the test-round questions
 At each Endless level load with intercept mode on, and independent of the connection, the client logs one line per upgrade: `Id`, `Researched`, locked state and whether it is a game grant. It also logs the level's `Storage` value and the runtime `UpgradeTiersConfigurations` and `ThroughputRewards` thresholds. These lines answer the three open M3 questions from `Player.log` in one test round. They stay in as startup diagnostics, since they are cheap and useful after game updates.
 
@@ -117,6 +121,7 @@ At each Endless level load with intercept mode on, and independent of the connec
 - [The "Check sent" notification also appears while offline, when nothing was sent] → Accepted for this change. The upgrade-panel label and the notification wording are an M3 follow-up. The log still distinguishes "recorded" from "sent".
 - [The replay applies each item's side effects again, for example auto-accept on every station, after a reload in which the player turned it off on some stations] → This matches what receiving the item does in the unmodded unlock. Per-save received state (a follow-up) would avoid replaying effects that are already applied.
 - [A late packet after a level change] → The epoch check (D3) drops it.
+- [A server that dies without a WebSocket close handshake] → MultiClient 6.7.1 raises only `ErrorReceived`, and `SocketClosed` fires only for a close frame (found in test-round step 7). The session treats a socket error that leaves the socket not `Connected` as the disconnect.
 
 ## Migration Plan
 

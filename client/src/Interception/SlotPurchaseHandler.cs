@@ -1,6 +1,7 @@
 using Game;
 using Game.Context;
 using RailRouteArchipelago.Core;
+using RailRouteArchipelago.Net;
 
 namespace RailRouteArchipelago.Interception
 {
@@ -32,16 +33,15 @@ namespace RailRouteArchipelago.Interception
             {
                 checkName = locationName;
                 Log.Info("Check recorded: " + item.Id + " → " + locationName + " " + UpgradeInterception.Details(item));
+                // Does nothing while offline: the resend on the next connect covers it.
+                CheckSender.Send(locationName);
             }
             else
             {
                 checkName = UpgradeInterception.DisplayName(item);
                 Log.Warn("Check recorded: " + item.Id + " has no location name " + UpgradeInterception.Details(item) + ". Slot bought anyway.");
             }
-            deps.NotificationController.CreateSideNotification()
-                .Text("Check sent: " + checkName)
-                .CanBeDismissed()
-                .NotSaved();
+            Notify.Side("Check sent: " + checkName);
             // Refreshes the panel, slot buttons, tier indicators and child slots as after a normal purchase.
             EffectState.RaiseResearchCompleted(deps.EventManager, item);
             return true;

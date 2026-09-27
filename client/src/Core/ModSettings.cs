@@ -15,6 +15,30 @@ namespace RailRouteArchipelago.Core
         [JsonProperty("interceptUpgradePurchases")]
         public bool InterceptUpgradePurchases { get; set; }
 
+        /// <summary>Archipelago server address; see <see cref="ServerAddress"/> for the accepted forms.</summary>
+        [JsonProperty("server")]
+        public string Server { get; set; }
+
+        [JsonProperty("slot")]
+        public string Slot { get; set; }
+
+        /// <summary>Optional room password. Only ever passed to the login, never logged.</summary>
+        [JsonProperty("password")]
+        public string Password { get; set; }
+
+        /// <summary>Both a server and a slot are set (the address may still be invalid).</summary>
+        public bool HasConnection => !string.IsNullOrWhiteSpace(Server) && !string.IsNullOrWhiteSpace(Slot);
+
+        /// <summary>The password, or null when it is missing or empty.</summary>
+        public string PasswordOrNull => string.IsNullOrEmpty(Password) ? null : Password;
+
+        /// <summary>Log text for the settings. Says whether a password is set, never what it is.</summary>
+        public override string ToString() =>
+            "intercept " + (InterceptUpgradePurchases ? "on" : "off")
+            + ", server " + (string.IsNullOrWhiteSpace(Server) ? "none" : Server.Trim())
+            + ", slot " + (string.IsNullOrWhiteSpace(Slot) ? "none" : Slot)
+            + ", password " + (PasswordOrNull == null ? "none" : "set");
+
         /// <summary>
         /// Loads settings from <paramref name="path"/>. Returns false (with defaults and an error message)
         /// only when the file exists but cannot be read or parsed; a missing file is not an error.

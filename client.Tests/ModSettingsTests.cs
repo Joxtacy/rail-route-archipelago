@@ -78,5 +78,70 @@ namespace RailRouteArchipelago.Tests
             Assert.True(ModSettings.TryLoad(SettingsPath, out var settings, out _));
             Assert.False(settings.InterceptUpgradePurchases);
         }
+
+        [Fact]
+        public void ConnectionFields_Load()
+        {
+            File.WriteAllText(SettingsPath,
+                "{\"interceptUpgradePurchases\": true, \"server\": \"localhost:38281\", \"slot\": \"Player\", \"password\": \"hunter2\"}");
+
+            Assert.True(ModSettings.TryLoad(SettingsPath, out var settings, out var error));
+            Assert.Null(error);
+            Assert.Equal("localhost:38281", settings.Server);
+            Assert.Equal("Player", settings.Slot);
+            Assert.Equal("hunter2", settings.PasswordOrNull);
+            Assert.True(settings.HasConnection);
+        }
+
+        [Theory]
+        [InlineData("{\"interceptUpgradePurchases\": true}")]
+        [InlineData("{\"interceptUpgradePurchases\": true, \"server\": \"localhost\"}")]
+        [InlineData("{\"interceptUpgradePurchases\": true, \"slot\": \"Player\"}")]
+        [InlineData("{\"interceptUpgradePurchases\": true, \"server\": \" \", \"slot\": \"Player\"}")]
+        [InlineData("{\"interceptUpgradePurchases\": true, \"server\": \"localhost\", \"slot\": \"\"}")]
+        public void MissingServerOrSlot_Offline(string json)
+        {
+            File.WriteAllText(SettingsPath, json);
+
+            Assert.True(ModSettings.TryLoad(SettingsPath, out var settings, out _));
+            Assert.False(settings.HasConnection);
+        }
+
+        [Theory]
+        [InlineData("{}")]
+        [InlineData("{\"password\": \"\"}")]
+        [InlineData("{\"password\": null}")]
+        public void MissingOrEmptyPassword_IsNull(string json)
+        {
+            File.WriteAllText(SettingsPath, json);
+
+            Assert.True(ModSettings.TryLoad(SettingsPath, out var settings, out _));
+            Assert.Null(settings.PasswordOrNull);
+        }
+
+        [Fact]
+        public void LogText_NeverContainsPassword()
+        {
+            var settings = new ModSettings
+            {
+                InterceptUpgradePurchases = true,
+                Server = "localhost:38281",
+                Slot = "Player",
+                Password = "s3cr3t-Pa55",
+            };
+
+            var text = settings.ToString();
+
+            Assert.DoesNotContain("s3cr3t-Pa55", text);
+            Assert.Contains("password set", text);
+            Assert.Contains("server localhost:38281", text);
+            Assert.Contains("slot Player", text);
+        }
+
+        [Fact]
+        public void LogText_NoPassword()
+        {
+            Assert.Contains("password none", new ModSettings().ToString());
+        }
     }
 }

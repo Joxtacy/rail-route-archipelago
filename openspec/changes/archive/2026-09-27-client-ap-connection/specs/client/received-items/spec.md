@@ -51,12 +51,12 @@ When the client connects, the server resends every item the slot has received so
 
 #### Scenario: Item after the replay
 - **WHEN** the replay is done and another player sends the "Tunnels" item
-- **THEN** the unlock popup for Tunnels is shown, unless the system upgrades menu is open
+- **THEN** the unlock popup for Tunnels is shown, or, while the system upgrades menu is open, a side notification naming Tunnels and the sending player
 
 ## MODIFIED Requirements
 
 ### Requirement: Received items grant upgrade effects without buying slots
-When intercept mode is on in an Endless level, receiving an upgrade item SHALL make that upgrade's game feature available, with the same side effects as the game's own unlock (for example enabling auto-accept on existing stations). It SHALL show the game's unlock popup under the same conditions as the game's own unlock (not while the system upgrades menu is open), except for items replayed on connect, and SHALL NOT mark any slot as bought.
+When intercept mode is on in an Endless level, receiving an upgrade item SHALL make that upgrade's game feature available, with the same side effects as the game's own unlock (for example enabling auto-accept on existing stations). It SHALL show the game's unlock popup under the same conditions as the game's own unlock (not while the system upgrades menu is open), except for items replayed on connect, and SHALL NOT mark any slot as bought. When the unlock popup is not shown for a received item that isn't part of the replay, the client SHALL show a side notification naming the upgrade and, for an Archipelago item, the player who sent it.
 
 #### Scenario: Receive an item whose slot is not bought
 - **WHEN** intercept mode is on in an Endless level and the player receives the Autoblocks item without having bought the Autoblocks slot
@@ -67,6 +67,11 @@ When intercept mode is on in an Endless level, receiving an upgrade item SHALL m
 #### Scenario: Receive an item with side effects
 - **WHEN** intercept mode is on in an Endless level and the player receives the Auto-accept Trains item
 - **THEN** existing stations switch to auto-accept, as when the upgrade is unlocked in the unmodded game
+
+#### Scenario: Receive an item while the system upgrades menu is open
+- **WHEN** the player buys a slot in the system upgrades menu and the server sends back an item for this slot
+- **THEN** no unlock popup is shown
+- **AND** a side notification names the received upgrade and the player who sent it
 
 #### Scenario: Buy a slot after receiving its item
 - **WHEN** the player has received the Autoblocks item and then buys the Autoblocks slot

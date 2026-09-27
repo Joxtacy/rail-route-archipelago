@@ -27,4 +27,5 @@ Start with `ROADMAP.md` (where we are), `openspec/specs/` (what's built) and `FI
 - On Apple Silicon, test through Steam. The game runs under Rosetta because `libsteam_api.bundle` is x86_64-only, and native `arch -arm64` launches crash.
 - Player purchases go through `UnlockUpgradeCommand.Run`. Every other unlock calls `ResearchController.CompleteResearch`, which must never be intercepted.
 - In intercept mode on Endless levels, `ResearchItem.Researched` means "slot bought", and upgrade effects come from the patched `HasResearched`/`ResearchedValue` (and `IsAutomationEnabled`), which answer from received items.
+- Archipelago network callbacks (MultiClient.Net raises them on socket/thread-pool threads) only enqueue. `ArchipelagoPump` runs them on the main thread and drops any from an older session epoch.
 - In-game behavior can only be verified by the user clicking through the game. Batch those checks into one test round with explicit steps, then confirm them against `Player.log`.

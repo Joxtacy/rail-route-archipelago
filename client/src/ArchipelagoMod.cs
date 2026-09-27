@@ -3,6 +3,7 @@ using Game;
 using Game.Context;
 using Game.Mod;
 using RailRouteArchipelago.Interception;
+using RailRouteArchipelago.Net;
 using RailRouteArchipelago.Patching;
 using Utils;
 
@@ -24,12 +25,16 @@ namespace RailRouteArchipelago
 
         public override async Task OnEnable()
         {
+            // Before anything can load an Archipelago.MultiClient.Net type.
+            NewtonsoftBinding.Register();
             Log.Info("Enabled.");
+            NewtonsoftBinding.LogSpike();
             UpgradeInterception.Configure();
             PatchManager.Apply();
             if (PatchManager.Applied && !debugKeyInstalled)
             {
                 DebugReceiveKey.Install();
+                ArchipelagoPump.Install();
                 debugKeyInstalled = true;
             }
             if (PatchManager.Applied)

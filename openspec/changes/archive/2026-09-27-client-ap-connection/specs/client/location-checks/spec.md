@@ -46,6 +46,11 @@ The client SHALL NOT send a location for a slot the game itself unlocked (level 
 - **WHEN** the level configuration unlocks an upgrade and the client connects
 - **THEN** that upgrade's location is not sent
 
+#### Scenario: Level from another map
+- **WHEN** the connected slot was generated for another map than the loaded level
+- **THEN** no location is sent, neither on connect nor when the player buys a slot
+- **AND** the game log says that checks are not sent because the map doesn't match the seed
+
 #### Scenario: Location not in the seed
 - **WHEN** a slot is bought whose location the connected slot doesn't have (for example an Expect Delays slot in a seed generated without Expect Delays)
 - **THEN** the game log warns that the location is not in the seed

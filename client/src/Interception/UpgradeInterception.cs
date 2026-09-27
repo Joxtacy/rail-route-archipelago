@@ -11,6 +11,9 @@ namespace RailRouteArchipelago.Interception
 
         public static bool InterceptEnabled => Handler is SlotPurchaseHandler;
 
+        /// <summary>The settings file as loaded at mod enable time (defaults if missing or invalid).</summary>
+        public static ModSettings Settings { get; private set; } = new ModSettings();
+
         public static void Configure()
         {
             var modDir = Path.GetDirectoryName(typeof(UpgradeInterception).Assembly.Location) ?? ".";
@@ -19,8 +22,10 @@ namespace RailRouteArchipelago.Interception
             {
                 Log.Warn(error.TrimEnd('.') + ". Using defaults (intercept mode off).");
             }
+            Settings = settings;
             Handler = settings.InterceptUpgradePurchases ? new SlotPurchaseHandler() : new LogOnlyHandler();
             Log.Info("Intercept mode: " + (InterceptEnabled ? "on" : "off") + " (settings: " + path + ")");
+            Log.Info("Settings: " + settings);
         }
 
         public static string DisplayName(ResearchController.ResearchItem item) =>

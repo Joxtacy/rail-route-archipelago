@@ -41,11 +41,17 @@ namespace RailRouteArchipelago.Interception
 
         public static void RecordGrant(string id) => grantedIds.Add(id);
 
+        /// <summary>The upgrade Ids the game granted itself in this level session.</summary>
+        public static ICollection<string> GrantedIds => grantedIds;
+
         public static void Clear()
         {
             Received.Clear();
             grantedIds.Clear();
         }
+
+        /// <summary>Clears the received items only, before the server's full item list replaces them. Game grants stay.</summary>
+        public static void ClearReceived() => Received.Clear();
 
         /// <summary>HasResearched: binary upgrades only, like the game (levelled ones answer false).</summary>
         public static bool HasResearched(ResearchController controller, Research research)

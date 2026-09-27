@@ -117,3 +117,58 @@ The two Custom Contracts slots share one location, because the game never shows 
 | `coach_yard` | Regional Trains Stabling | 1047 | Red T3 |  |
 | `advanced_routing_sensor` | Advanced Routing Sensor | 1048 | Red T3 |  |
 | `custom_contracts` | Custom Contracts | 1012 | Red T3 | Happy Passengers off |
+
+## Item names (the contract with the client)
+
+The client resolves each received item ID to its name through the datapackage, then maps the name to the game upgrade it grants. So these names must match the client's table (`client/src/Core/ItemNames.cs`) exactly, and `ItemNamesTests` fails when they differ. The source of truth is `rail_route/data.py`, and `test/test_ids.py` pins the IDs, which are listed here for readers and trackers.
+
+- An upgrade item grants that one upgrade and has the same name as the upgrade's location. Custom Contracts grants whichever of its two variants the level shows; the client maps it to the first `Id` listed.
+- A progressive item grants the next level of its chain, in the order listed. The client maps it to the chain's first `Id`.
+- Filler items have no effect yet.
+
+| Item name | Item ID | Game `Id`(s) | Kind |
+|---|---|---|---|
+| Autoblocks | 1 | `autoblock` | upgrade |
+| Auto-accept Trains | 2 | `auto_accept` | upgrade |
+| Automatic Routing | 3 | `automatic_routing` | upgrade |
+| Perpetual Circuit | 4 | `perpetual_circuit` | upgrade |
+| Auto-reverse Trains | 5 | `auto_reverse` | upgrade |
+| Manual Signal Route Preview | 6 | `manual_signal_route_preview` | upgrade |
+| Signalling Safety | 7 | `manual_signal_security` | upgrade |
+| Platform Adjustments | 8 | `platform_management` | upgrade |
+| Timetable Adjustments | 9 | `contract_management` | upgrade |
+| Train Alerts | 10 | `train_alerts` | upgrade |
+| Relay Sensor | 11 | `relay_sensor` | upgrade |
+| Custom Contracts | 12 | `custom_contracts`, `custom_contracts_alt` | upgrade |
+| Maintenance Depot | 13 | `maintenance_depot` | upgrade |
+| Additional Service Capacity | 14 | `additional_service_capacity` | upgrade |
+| Field Efficiency | 15 | `field_efficiency` | upgrade |
+| Expanded Service Capacity | 16 | `expanded_service_capacity` | upgrade |
+| InterCities | 17 | `ic_contracts` | upgrade |
+| Custom Contract Period | 18 | `custom_contract_period` | upgrade |
+| Operating Hours | 19 | `contract_windows` | upgrade |
+| Departure Sensor | 20 | `departure_sensor` | upgrade |
+| Arrival Sensor | 21 | `platform_sensor` | upgrade |
+| Waypoints | 22 | `waypoint` | upgrade |
+| Routing Sensor | 23 | `routing_sensor` | upgrade |
+| Structural Contracts Manager | 24 | `auto_contract_manager_structural` | upgrade |
+| Financial Contracts Manager | 25 | `auto_contract_manager_financial` | upgrade |
+| Regional Contracts Manager | 26 | `auto_contract_manager_regional` | upgrade |
+| Faster Switches | 27 | `switch_speed` | upgrade |
+| Regional Trains | 28 | `regional_contracts` | upgrade |
+| Freights | 29 | `onetime_contracts` | upgrade |
+| Shunting Commands | 30 | `shunting_commands` | upgrade |
+| Shunting Track | 31 | `shunting_track` | upgrade |
+| Shunting Sensor | 32 | `shunting_sensor` | upgrade |
+| Stabling Sensor | 33 | `stabling_sensor` | upgrade |
+| Tunnels | 34 | `tunnels` | upgrade |
+| Urban Transit Contracts | 35 | `urban_contracts` | upgrade |
+| Loco Coupling | 36 | `loco_coupling` | upgrade |
+| Advanced Arrival Sensor | 37 | `advanced_arrival_sensor` | upgrade |
+| Service Automation | 38 | `service_automation` | upgrade |
+| Regional Trains Stabling | 39 | `coach_yard` | upgrade |
+| Advanced Routing Sensor | 40 | `advanced_routing_sensor` | upgrade |
+| Progressive Track Speed | 100 | `track_speed1`, `track_speed2`, `track_speed3` | progressive |
+| Progressive Station Count | 101 | `station_count1`, `station_count2`, `station_count3` | progressive |
+| Progressive Contract Offers | 102 | `more_offered_contracts1`, `more_offered_contracts2`, `more_offered_contracts3` | progressive |
+| Green XP Bundle | 500 | — | filler |

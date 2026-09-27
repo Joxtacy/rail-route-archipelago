@@ -10,15 +10,18 @@ namespace RailRouteArchipelago.Interception
     /// <summary>
     /// Receiving an upgrade item in split mode: counts it and applies the upgrade's side effects the way
     /// ResearchController.CompleteResearch does, without ever writing any slot's Researched flag.
-    /// The Archipelago client will call <see cref="Receive"/> with items resolved from AP item IDs.
+    /// The Archipelago client calls <see cref="Receive"/> with items resolved from AP item names; F9 calls it too.
     /// </summary>
     internal static class UpgradeReceiver
     {
         /// <summary>
         /// Receives the item for <paramref name="upgrade"/>: that upgrade, or for a levelled one a copy of
-        /// its progressive item (the next level of its chain).
+        /// its progressive item (the next level of its chain). <paramref name="silent"/> skips the unlock
+        /// popup only (for the replay on connect); side effects and the UI refresh still happen. When a non-silent
+        /// receive can't show the popup (the system upgrades menu is open), a side notification names the upgrade
+        /// and <paramref name="sender"/> instead.
         /// </summary>
-        public static void Receive(ResearchController.ResearchItem upgrade)
+        public static void Receive(ResearchController.ResearchItem upgrade, bool silent = false, string sender = null)
         {
             if (!SplitFlags.Active)
             {
@@ -32,9 +35,16 @@ namespace RailRouteArchipelago.Interception
             ApplySideEffects(deps, effectItem.Research);
 
             // Mirrors the tail of CompleteResearch.
-            if (deps.CurrentMode == GameMode.Play && deps.GameController.Loaded && !deps.MenuController.SystemUpgradesShown)
+            if (!silent)
             {
-                ModalDialogUiController.CreateCustom<UnlockPopup>()?.Show(effectItem.Title, null, UnlockPopup.UnlockableType.SystemUpgrade, effectItem.IconCode);
+                if (deps.CurrentMode == GameMode.Play && deps.GameController.Loaded && !deps.MenuController.SystemUpgradesShown)
+                {
+                    ModalDialogUiController.CreateCustom<UnlockPopup>()?.Show(effectItem.Title, null, UnlockPopup.UnlockableType.SystemUpgrade, effectItem.IconCode);
+                }
+                else
+                {
+                    Notify.Side("Received " + UpgradeInterception.DisplayName(effectItem) + (sender == null ? "" : " from " + sender));
+                }
             }
             EffectState.RaiseResearchCompleted(deps.EventManager, effectItem);
             Log.Info("Item received: " + effectItem.Id + " (" + UpgradeInterception.DisplayName(effectItem) + "), count " + count);

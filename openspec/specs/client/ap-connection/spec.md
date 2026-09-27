@@ -1,10 +1,10 @@
-# Spec Delta
+# client/ap-connection Specification
 
 ## Purpose
 
 Connects the client mod to an Archipelago server for the Endless level being played, delivers network events safely to the game, and checks that the connected slot was generated for the level and DLC settings in use.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Connection settings come from the settings file
 The client SHALL read the Archipelago server address (host and port), the slot name and an optional password from the mod's settings file. It SHALL try to connect only when intercept mode is on and both the server address and the slot name are set. A missing or empty password SHALL mean no password. The client SHALL NOT write the password to the game log.
@@ -69,7 +69,7 @@ Every effect of a network event on the game (applying a received item, sending t
 - **THEN** it is not applied to the next level
 
 ### Requirement: Slot data is checked against the loaded level
-After connecting, the client SHALL compare the slot data's map, Expect Delays and Happy Passengers values with the loaded level's identifier and with whether each DLC is owned and enabled in the level's start settings. On any mismatch it SHALL log each differing value (expected and actual) and show a notification, and it SHALL stay connected. Missing or unreadable slot data SHALL be logged as a warning and SHALL NOT fail the connection.
+After connecting, the client SHALL compare the slot data's map, Expect Delays and Happy Passengers values with the loaded level's identifier and with whether each DLC is owned and enabled in the level's start settings. On any mismatch it SHALL log each differing value (expected and actual) and show a notification, and it SHALL stay connected. When the map differs, the client SHALL send no location checks for the rest of the connection (see `client/location-checks`), and the notification SHALL say so. A differing DLC setting SHALL NOT stop checks. Missing or unreadable slot data SHALL be logged as a warning and SHALL NOT fail the connection.
 
 #### Scenario: Slot matches the level
 - **WHEN** the slot was generated for Haarlem without DLCs and the player connects from Haarlem with neither DLC enabled
@@ -78,12 +78,14 @@ After connecting, the client SHALL compare the slot data's map, Expect Delays an
 #### Scenario: Wrong map
 - **WHEN** the slot was generated for Prague and the player connects from Haarlem
 - **THEN** the game log contains a warning naming the expected map "prague" and the loaded map "Haarlem"
-- **AND** the player sees a notification that the level does not match the seed
-- **AND** the client stays connected
+- **AND** the player sees a notification that the level does not match the seed and that checks are not sent
+- **AND** the client stays connected and still applies received items
+- **AND** no location checks are sent, neither the resend on connect nor for slots bought afterwards
 
 #### Scenario: DLC setting differs
 - **WHEN** the slot was generated with Expect Delays and the level was started with Expect Delays disabled or not owned
 - **THEN** the game log contains a warning naming the Expect Delays setting and both values
+- **AND** location checks are still sent
 
 ### Requirement: The client library ships without a second JSON library
 The mod's folder SHALL contain the Archipelago client library next to the mod assembly and SHALL NOT contain a Newtonsoft.Json assembly. At runtime the client library SHALL use the game's own Newtonsoft.Json. The game SHALL NOT treat the client library as a mod.
