@@ -13,7 +13,7 @@ Status: ✅ done · 🔜 next · ⬜ planned
 | M2 | APWorld v0 | A minimal Python `rail_route` world that generates a playable seed | ✅ | `2026-09-27-add-apworld-v0` |
 | M3 | Client ↔ server | The mod connects to an Archipelago server, sends checks and receives items | ✅ | `2026-09-27-client-split-flags`, `2026-09-27-client-ap-connection` |
 | M4 | More checks and items | More locations, plus filler and trap items | ⬜ | |
-| M5 | Playable release | Anyone can install and play a full seed from a release zip | ⬜ | |
+| M5 | Playable release | Anyone can install and play a full seed from a release zip | ⬜ | `2026-10-01-client-goal-completion` |
 | M6 | Extras | Optional features beyond a complete game | ⬜ | |
 
 ## Milestone notes
@@ -45,7 +45,8 @@ Status: ✅ done · 🔜 next · ⬜ planned
   - A clearer connection-failure reason: an unreachable server logs `A task was canceled` after the real socket error.
   - Check a hosted `wss://` room (TLS on the game's Mono).
   - Untested in the game: logging in to a password-protected room, and buying a slot live on a map-mismatched level (checks should stay blocked). Run both in the next change's test round.
-  - Goal completion (M5), the in-game connect screen (M5), and filler handling (M4).
+  - The in-game connect screen (M5) and filler handling (M4).
+  - Seed binding (above) would let the mod resend a goal from a save automatically, and keep a pending goal across game runs. Retire the Shift+F10 fallback once it does.
 
 ### M4 — More checks and items
 - Locations:
@@ -59,7 +60,7 @@ Status: ✅ done · 🔜 next · ⬜ planned
 
 ### M5 — Playable release
 - An in-game connect screen.
-- Goal completion reported to the server.
+- ✅ Goal completion reported to the server: the Endless-complete star earned live, a pending goal sent after the next login in the same game run, and Shift+F10 for a star from a save (`client-goal-completion`, FINDINGS.md "Goal completion").
 - A release zip per OS (`mods/RailRouteArchipelago/` plus the `.apworld`).
 - A player setup guide. Linux paths confirmed.
 

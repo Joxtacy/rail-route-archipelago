@@ -6,7 +6,7 @@ A C# mod loaded by Rail Route's built-in mod loader. There's no BepInEx: the gam
 The mod patches the system-upgrade purchase and the game's upgrade-effect queries with Harmony. With intercept mode on,
 in an Endless level, buying an upgrade slot and owning its upgrade are separate: a purchase records a location check,
 and only a received item unlocks the upgrade. With a server and slot configured, the mod connects to Archipelago for the
-level, sends each bought slot as a location check and applies the items the server sends.
+level, sends each bought slot as a location check, applies the items the server sends and reports the goal.
 
 ## Build
 
@@ -91,6 +91,7 @@ For a room on archipelago.gg, use the address and port the room page shows, and 
 | `server` | none | The Archipelago server: `host:port`, a bare `host` (port 38281), or a `ws://`/`wss://` URI. An invalid address is logged and treated as none. |
 | `slot` | none | Your slot (player) name in the seed. |
 | `password` | none | The room password, if it has one. It's only sent to the server and never written to the log. |
+| `debugEndlessCompleteThreshold` | none | **Test only.** A positive number lowers the Endless-complete star's threshold on a level that hasn't earned the star yet (`Debug: endless-complete threshold set to <n>` in the log), so a test round can reach the goal quickly. The game saves the lowered threshold with the level, so use it only on throwaway saves. |
 
 The file is read once at game start. A missing file, or an invalid file or value, means off; invalid files are logged as a warning.
 Without `server` and `slot` the mod stays offline: purchases are recorded in the log only, and F9 still works.
@@ -117,6 +118,8 @@ Notifications:
 | Archipelago disconnected | The connection dropped during play. Received items keep working until you leave the level. |
 | This level doesn't match the Archipelago seed | The slot was generated for another map, or with other Expect Delays / Happy Passengers settings. The log names each difference. The mod stays connected and still applies items. On another map it adds "– checks are not sent" and sends no checks for that connection, so a save from another map can't check this seed's locations. |
 | Restored *n* Archipelago items | The server resent the slot's items after connecting. |
+| Archipelago goal complete | The goal was sent to the server (see "Goal" below). |
+| Endless-complete star found in the save; the goal isn't sent automatically. Press Shift+F10 to send it. | The loaded save already has the Endless-complete star from an earlier game run. See "Goal" below. |
 
 **Sending checks.** Buying a slot while connected sends its location to the server at once (`Check sent: <name> (<id>)`
 in the log). After every login the mod sends every bought slot again in one batch (`Resent <n> checks`), which covers
@@ -130,11 +133,28 @@ On connect the server resends every item the slot has received so far. The mod a
 item and shows one "Restored *n* Archipelago items" notification instead. Filler items (Green XP Bundle) are logged
 as `Filler item ignored` and have no effect yet.
 
-## Debug keys
+## Goal
+
+The seed's goal (`endless_complete`) is the level's Endless-complete star: the third Endless star, which the game
+awards once one cycle's combined green and red score reaches 60.
+
+- **Sent live.** When the game awards that star while you play, on the seed's map and connected, the mod reports the
+  goal to the server (`Goal sent: Endless complete on <map>` and an "Archipelago goal complete" notification). The
+  green and red stars don't count.
+- **Not sent from a save.** A save that already has the star (for example from before this seed) never sends the goal
+  by itself. The mod logs that it found the star and points at Shift+F10.
+- **Pending while offline.** A star earned while not connected, or whose send failed, stays pending for that map until
+  the game quits (`Goal reached, not sent: not connected`). Reload the save once the server is back, in the same game
+  run, and the goal is sent after login (`… (pending since offline)`). After a restart, use Shift+F10.
+- **Refused.** On another map than the seed's, or with a goal the mod doesn't know, the goal isn't sent and the log
+  says why (`Goal reached, not sent: <reason>`). The goal is sent at most once per game run.
+
+## Keys
 
 | Key | When | Effect |
 |---|---|---|
-| F9 | In an Endless level, intercept mode on | Receives the item of the upgrade selected in the upgrade panel, as though Archipelago had sent it. For a levelled upgrade that's one more level. Needs no bought slot. Logs `Debug receive: no upgrade selected` if nothing is selected. |
+| Shift+F10 | In an Endless level, intercept mode on | **Sends the goal, which can't be undone.** Only when connected, on the seed's map, with a supported goal, and when the loaded level has the Endless-complete star; otherwise it logs `Goal not sent manually: <reason>`. For a star earned in an earlier game run. Plain F10 does nothing. |
+| F9 | In an Endless level, intercept mode on (debug) | Receives the item of the upgrade selected in the upgrade panel, as though Archipelago had sent it. For a levelled upgrade that's one more level. Needs no bought slot. Logs `Debug receive: no upgrade selected` if nothing is selected. |
 
 ## Checking that it works
 

@@ -17,7 +17,7 @@ namespace RailRouteArchipelago
     {
         private IControllers deps;
         private bool subscribed;
-        private static bool debugKeyInstalled;
+        private static bool keysInstalled;
 
         public override CachedLocalizedString Title => "Archipelago";
 
@@ -31,10 +31,11 @@ namespace RailRouteArchipelago
             NewtonsoftBinding.LogSpike();
             UpgradeInterception.Configure();
             PatchManager.Apply();
-            if (PatchManager.Applied && !debugKeyInstalled)
+            if (PatchManager.Applied && !keysInstalled)
             {
                 DebugReceiveKey.Install();
-                debugKeyInstalled = true;
+                GoalSendKey.Install();
+                keysInstalled = true;
             }
             if (PatchManager.Applied)
             {
@@ -42,6 +43,7 @@ namespace RailRouteArchipelago
                 // Subscribed once here so the first level's grants are seen; OnContextChanged re-attaches
                 // only if a new context brings a different EventManager.
                 GameGrantObserver.Attach(Ctx.Deps?.EventManager);
+                GoalWatcher.Attach(Ctx.Deps?.EventManager);
             }
             await Task.Yield();
         }
@@ -50,6 +52,7 @@ namespace RailRouteArchipelago
         {
             Unsubscribe();
             GameGrantObserver.Detach();
+            GoalWatcher.Detach();
             PatchManager.Remove();
             await Task.Yield();
         }
@@ -60,6 +63,7 @@ namespace RailRouteArchipelago
             if (PatchManager.Applied)
             {
                 GameGrantObserver.Attach(dependencies.EventManager);
+                GoalWatcher.Attach(dependencies.EventManager);
             }
             if (dependencies.CurrentMode == GameMode.Play)
             {

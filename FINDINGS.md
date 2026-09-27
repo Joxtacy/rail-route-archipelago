@@ -82,7 +82,7 @@ Read from the decompiled 3.0.18 `RailRoute.dll` and the game assets. `apworld/ra
 - **Tier thresholds** (`GetCurrentTier`). Tiers unlock on best points per cycle, not on the number of upgrades bought.
   - C# defaults: Green T2 at 10 and T3 at 25; Red T2 at 8 and T3 at 30.
   - Red opens once Green reaches 8 points per cycle (which grants 3 red points) or Green tier 2.
-  - Endless-complete is a Green throughput of 60.
+  - Endless-complete is a combined green + red score of 60 in one cycle (`Wallet.ScoreReachedMax`), not green alone. See "Goal completion" below.
   - Unverified: the serialized `SystemUpgradeTierDefaults` asset may override these. It's on the M3 test-round list.
 - **Endless maps** used by the world, as level UUID and difficulty: Haarlem (`Haarlem`, 0), Prague (`prague`, 3) and Amsterdam (`Amsterdam`, 5). None of them stores an upgrade-override block in the formats found so far. The M3 test round confirms this at runtime.
 
@@ -182,4 +182,26 @@ A local 0.6.7 server, a Haarlem seed without DLCs (43 locations). Every step was
 - None of the three maps overrides the upgrade set.
 - The runtime thresholds match the C# defaults (Green 10/25, Red 8/30), so the serialized `SystemUpgradeTierDefaults` doesn't override them.
 - **Haarlem's `Storage` is `CuratedMapPack`.** Whether players without the Curated Map Pack DLC can start it is unverified. If they can't, the APWorld's default map (`haarlem`) should change.
-- Throughput rewards at start (four in total): Green 8 → 3 Red points, Green 20 → Green star, Red 20 → Red star, and Green 60 with neither points nor a star, so some reward type the diagnostics don't print.
+- Throughput rewards at start (four in total): Green 8 → 3 Red points, Green 20 → Green star, Red 20 → Red star, and Green 60 with neither points nor a star. That last one is the Endless-complete star (see "Goal completion" below).
+
+## Goal completion (2026-09-27, change client-goal-completion)
+
+Read from the decompiled 3.0.18 `RailRoute.dll`.
+
+- **The Endless-complete reward** is the `ThroughputRewards` entry with `RequiredThroughputType == Green`, no `RewardedStarType` and no `RewardedPointsAmount`. `GetCurrentStars`, `VictoryScreenEndless` and `CycleReport` look it up the same way.
+- **It counts green + red.** `ResearchController.OnExperiencePointsAwarded` compares that reward against `Wallet.ScoreReachedMax`, the best cycle's `PrimaryPoints + SecondaryPoints`. Every other Green reward uses `PrimaryPointsPerCycleReachedMax`. The APWorld's goal logic counts green items only, which is conservative.
+- **Grant order.** It sets `reward.Granted = true` first, then calls `StorageController.SubmitStar`, unlocks an achievement, force-autosaves, shows the star panel, and last calls `EventManager.TriggerStarAwarded(LevelDefinition)`. All of that runs on the main thread. The event doesn't say which star, so the client reads the reward's `Granted` flag and counts only its false-to-true move within the level.
+- **Saved with the level.** `Granted` is restored from `SavedResearchController.throughputRewards` without raising `StarAwarded`. `SubmitStar` also records the star profile-wide per map in `ProgressStore`; the client ignores that, because it predates any seed.
+- Endless levels never raise the `LevelCompleted` string event.
+- `ModifyThroughputStarReward(int)` replaces the reward with a new, ungranted one. The test setting `debugEndlessCompleteThreshold` uses it, and the lowered threshold is saved with the level (it shows as e.g. `Green 3 → (granted)` in the rewards line after a reload).
+
+### Goal test round (2026-10-01, macOS via Steam, Haarlem Endless)
+
+Local 0.6.7 server, three fresh Haarlem seeds (A, B, C), `debugEndlessCompleteThreshold` 3. Every step was confirmed against `Player.log` and the server console.
+
+- **Live goal (seed A).** A fresh Haarlem game logged `Debug: endless-complete threshold set to 3`. At a cycle score of 3 the star panel appeared, then `Goal sent: Endless complete on Haarlem` and the notification. The server logged `Player (Team #1) has completed their goal.` At startup the game had auto-loaded an Amsterdam save first: checks were blocked by the map mismatch, but the debug threshold was applied and saved into that save too.
+- **Save with the star (seed B).** Loading step 1's save logged `Endless-complete star found in the save; the goal isn't sent automatically. Press Shift+F10 to send it.` with its notification, and the server recorded no goal. Plain F10 logged nothing. Shift+F10 logged `Goal sent: Endless complete on Haarlem (manual)`, and the server recorded the goal. A second Shift+F10 logged `Goal not sent manually: the goal was already sent in this game run`.
+- **Manual refusal without the star (seed C).** Shift+F10 on a fresh Haarlem game: `Goal not sent manually: the level hasn't earned the Endless-complete star`.
+- **Map mismatch (seed C).** A fresh Prague game reached the star: `Goal reached, not sent: the level's map doesn't match the seed`, and Shift+F10 refused with the same reason. No goal on the server.
+- **Offline, then reconnect (seed C).** With the server stopped, a fresh Haarlem game failed to connect, Shift+F10 logged `Goal not sent manually: not connected`, and the star logged `Goal reached, not sent: not connected`. After a server restart, reloading the save in the same game run logged `Goal sent: Endless complete on Haarlem (pending since offline)`, and the server recorded the goal.
+- **Not tested:** the green star alone (20 green points in a cycle without the debug threshold) was skipped because it takes too long. The code reads only the Endless-complete reward's `Granted` flag, which a green or red star leaves unchanged.

@@ -5,6 +5,7 @@ using Archipelago.MultiClient.Net;
 using Archipelago.MultiClient.Net.Enums;
 using Archipelago.MultiClient.Net.Packets;
 using RailRouteArchipelago.Core;
+using RailRouteArchipelago.Interception;
 
 namespace RailRouteArchipelago.Net
 {
@@ -52,6 +53,9 @@ namespace RailRouteArchipelago.Net
 
         /// <summary>The slot was generated for another map, so no checks are sent on this connection.</summary>
         public bool ChecksBlocked { get; private set; }
+
+        /// <summary>The slot data's goal is one the client reports (<see cref="GoalState.IsSupportedGoal"/>).</summary>
+        public bool GoalSupported { get; private set; }
 
         public ArchipelagoSession Session => session;
 
@@ -103,11 +107,24 @@ namespace RailRouteArchipelago.Net
         /// <summary>Queues an action from a network thread for this session's epoch.</summary>
         public void Post(Action action) => queue.Enqueue(epoch, action);
 
-        public void SendPacket(ArchipelagoPacketBase packet, string what)
+        /// <summary>Sends without blocking. A failure is logged, or handed to <paramref name="onFailed"/> on the main thread.</summary>
+        public void SendPacket(ArchipelagoPacketBase packet, string what, Action<string> onFailed = null)
         {
-            session.Socket.SendPacketAsync(packet).ContinueWith(
-                t => Post(() => Log.Error("Sending " + what + " failed: " + t.Exception?.GetBaseException().Message)),
-                TaskContinuationOptions.OnlyOnFaulted);
+            session.Socket.SendPacketAsync(packet).ContinueWith(t =>
+            {
+                var message = t.Exception?.GetBaseException().Message;
+                Post(() =>
+                {
+                    if (onFailed != null)
+                    {
+                        onFailed(message);
+                    }
+                    else
+                    {
+                        Log.Error("Sending " + what + " failed: " + message);
+                    }
+                });
+            }, TaskContinuationOptions.OnlyOnFaulted);
         }
 
         private async Task ConnectAndLogin()
@@ -143,6 +160,20 @@ namespace RailRouteArchipelago.Net
             Notify.Side("Archipelago connected");
             ChecksBlocked = SlotDataCheck.Run(success.SlotData);
             CheckSender.ResendAll(this);
+            ReadGoal(success.SlotData);
+            GoalWatcher.OnLogin(this);
+        }
+
+        private void ReadGoal(System.Collections.Generic.Dictionary<string, object> slotData)
+        {
+            object raw = null;
+            slotData?.TryGetValue("goal", out raw);
+            var goal = raw == null ? null : Convert.ToString(raw, System.Globalization.CultureInfo.InvariantCulture);
+            GoalSupported = GoalState.IsSupportedGoal(goal);
+            if (!GoalSupported)
+            {
+                Log.Warn("Slot goal " + (goal ?? "(missing)") + " isn't supported; the goal is never sent");
+            }
         }
 
         private void OnLoginFailed(string[] errors)

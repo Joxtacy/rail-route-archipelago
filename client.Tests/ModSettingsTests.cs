@@ -143,5 +143,31 @@ namespace RailRouteArchipelago.Tests
         {
             Assert.Contains("password none", new ModSettings().ToString());
         }
+
+        [Fact]
+        public void DebugEndlessCompleteThreshold_AbsentIsNull()
+        {
+            File.WriteAllText(SettingsPath, "{\"interceptUpgradePurchases\": true}");
+
+            Assert.True(ModSettings.TryLoad(SettingsPath, out var settings, out _));
+            Assert.Null(settings.DebugEndlessCompleteThreshold);
+        }
+
+        [Fact]
+        public void DebugEndlessCompleteThreshold_Loads()
+        {
+            File.WriteAllText(SettingsPath, "{\"debugEndlessCompleteThreshold\": 3}");
+
+            Assert.True(ModSettings.TryLoad(SettingsPath, out var settings, out var error));
+            Assert.Null(error);
+            Assert.Equal(3, settings.DebugEndlessCompleteThreshold);
+        }
+
+        [Fact]
+        public void LogText_MentionsDebugThresholdOnlyWhenSet()
+        {
+            Assert.DoesNotContain("threshold", new ModSettings().ToString());
+            Assert.Contains("debug endless-complete threshold 3", new ModSettings { DebugEndlessCompleteThreshold = 3 }.ToString());
+        }
     }
 }

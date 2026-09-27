@@ -26,6 +26,13 @@ namespace RailRouteArchipelago.Core
         [JsonProperty("password")]
         public string Password { get; set; }
 
+        /// <summary>
+        /// Test only: lowers the Endless-complete star's threshold on a level that hasn't earned it yet.
+        /// The game saves the lowered threshold with the level, so use it on throwaway saves.
+        /// </summary>
+        [JsonProperty("debugEndlessCompleteThreshold")]
+        public int? DebugEndlessCompleteThreshold { get; set; }
+
         /// <summary>Both a server and a slot are set (the address may still be invalid).</summary>
         public bool HasConnection => !string.IsNullOrWhiteSpace(Server) && !string.IsNullOrWhiteSpace(Slot);
 
@@ -37,7 +44,8 @@ namespace RailRouteArchipelago.Core
             "intercept " + (InterceptUpgradePurchases ? "on" : "off")
             + ", server " + (string.IsNullOrWhiteSpace(Server) ? "none" : Server.Trim())
             + ", slot " + (string.IsNullOrWhiteSpace(Slot) ? "none" : Slot)
-            + ", password " + (PasswordOrNull == null ? "none" : "set");
+            + ", password " + (PasswordOrNull == null ? "none" : "set")
+            + (DebugEndlessCompleteThreshold.HasValue ? ", debug endless-complete threshold " + DebugEndlessCompleteThreshold.Value : "");
 
         /// <summary>
         /// Loads settings from <paramref name="path"/>. Returns false (with defaults and an error message)
