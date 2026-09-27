@@ -44,6 +44,7 @@ Status: ✅ done · 🔜 next · ⬜ planned
   - Check whether Haarlem needs the Curated Map Pack DLC. If it does, change the APWorld's default map.
   - A clearer connection-failure reason: an unreachable server logs `A task was canceled` after the real socket error.
   - Check a hosted `wss://` room (TLS on the game's Mono).
+  - Untested in the game: logging in to a password-protected room, and buying a slot live on a map-mismatched level (checks should stay blocked). Run both in the next change's test round.
   - Goal completion (M5), the in-game connect screen (M5), and filler handling (M4).
 
 ### M4 — More checks and items
