@@ -17,6 +17,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The APWorld's location-name table, which LocationNamesTests compares with the client's. -->
+    <None Include="../apworld/README.md" Link="apworld/README.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Same version the game ships in Managed/. -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
     <PackageReference Include="xunit.v3" Version="4.0.1" />

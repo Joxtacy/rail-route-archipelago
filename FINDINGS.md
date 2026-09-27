@@ -85,3 +85,52 @@ Read from the decompiled 3.0.18 `RailRoute.dll` and the game assets. `apworld/ra
   - Endless-complete is a Green throughput of 60.
   - Unverified: the serialized `SystemUpgradeTierDefaults` asset may override these. It's on the M3 test-round list.
 - **Endless maps** used by the world, as level UUID and difficulty: Haarlem (`Haarlem`, 0), Prague (`prague`, 3) and Amsterdam (`Amsterdam`, 5). None of them stores an upgrade-override block in the formats found so far. The M3 test round confirms this at runtime.
+
+## Split flags (2026-09-27, change client-split-flags)
+
+Read from the decompiled 3.0.18 `RailRoute.dll`. In intercept mode, on an Endless (`ScoringModel.Economy`) level, the client keeps `ResearchItem.Researched` as the game's **slot bought** flag and redirects the upgrade **effects**.
+
+- **Effect queries.** Gameplay reads unlock state only through three `ResearchController` members, which the client patches:
+  - `HasResearched(Research)` (78 call sites): reads `binaryResearchDict[r].Researched`. It returns false for levelled research.
+  - `ResearchedValue(Research)` (10 call sites): the `Value` of the last bought item in the `gradualResearchLookup` chain (ordered by `Value`), else the private `InitialValue[r]` (4 stations, `Connection.Speeds[0]`, 1 contract offer). It throws for non-levelled research.
+  - The `IsAutomationEnabled` auto-property (1 reader, `TrainBottomBarPlaceable`, through `IResearchController`). `CompleteResearch` and `SavedResearchItem.Load` set it for `EnablesAutomation` items (departure, arrival and routing sensors, coach yard).
+- **Direct `.Researched` readers** outside `ResearchController` are all slot, UI, tutorial or save concerns, so they keep working with "slot bought" semantics:
+  - the upgrade panel and buttons (installed state, tier-complete indicators) and `SystemUpgradeContextPanelView`'s cost rows
+  - `UnlockUpgradeCommand.Validate` (`!Researched && CanResearch`)
+  - parent gating in `GetUpgradeRequiredForUnlock`
+  - tutorial tasks (`Unlock*Task`), story chapter S5P2 and the campaign's `UnlockingConstraint`
+  - save serialization (`SavedResearchItem`), which stores each slot's `researched` bit and on load calls `Finish()` with no event
+- **`ResearchCompleted` subscribers only re-query.** None of them applies an effect from the event argument. The subscribers are the upgrade page, items, buttons and context panel, `UnlockedByResearch`, the bottom bars, offices, station and scheduler configuration views, contract panels, `InterfaceController` (fires `InterfaceConfigurationChanged` for the three interface upgrades), story triggers and tutorial tasks. `BottomBarController` adds the item to its "recently unlocked" highlight. So the client fires the event to refresh the UI after a slot purchase or a received item.
+- **`ResearchController.Reset()`** clears every slot's `Researched` flag and `IsAutomationEnabled`. Its callers:
+  - `GameController`'s level clear, on every level unload and load
+  - the level editor's `SettingsPanel`
+  - the `ArrivalSensorTutorialChapter` and `RoutingSensorTutorialChapter` mini-tutorials
+
+  The client clears received items and game grants in a postfix on it.
+- **Selected upgrade.** `Ctx.Deps.MenuController.SystemUpgradesMenu.SystemUpgradeContextPanelView.SystemUpgradeContextPanelModel?.ResearchItem`, with the view's `gameObject.activeInHierarchy` as "shown" (as in `SelectUpgradeSubtask`).
+
+### Duplicated game logic: re-check after game updates
+
+- `UnlockUpgradeCommand.Run` cost deduction: `Wallet.AddResearchPointsPrimary/Secondary/Tertiary(-cost)`, mirrored in `SlotPurchaseHandler`.
+- `CompleteResearch`'s side-effect switch (when the scoring model isn't `Score`), mirrored in `UpgradeReceiver`:
+  - auto-accept or auto-reverse on every non-waypoint station
+  - train-alert preferences (braking, stopped, arrived)
+  - manual signal route preview
+  - signalling safety
+  - then `TriggerResearchCompleted`, `UnlockPopup` (play mode, `GameController.Loaded`, upgrades menu not shown) and `IsAutomationEnabled` for `EnablesAutomation` items
+- The `binaryResearchDict` / `gradualResearchLookup` split from `ResearchController.Awake` (items with or without a `Value`), and the private `InitialValue` field, mirrored in `EffectState`.
+
+### In-game test round (2026-09-27, macOS via Steam, Haarlem Endless)
+
+Every step was confirmed against `Player.log`, except where a step says it depends on what the user saw.
+
+- All five patches applied (`HasResearched`, `get_IsAutomationEnabled`, `ResearchedValue`, `Reset`, `UnlockUpgradeCommand.Run`). The effect state indexed 41 binary, 3 levelled and 4 automation upgrades.
+- **Buying and receiving are independent.** A bought slot shows Installed and records `Check recorded: <id> → <location>`, and the upgrade stays locked until received. It works in both orders: buy then F9, and F9 then buy. Auto-accept switched stations on when received, before its slot was bought. No repeat purchase was possible.
+- **Parent gating follows slots, not items.** Receiving Automatic Routing didn't make Perpetual Circuit buyable. Buying the Automatic Routing slot did.
+- **Progressive.** Buying Basic Tracks didn't unlock 80 km/h. One F9 on the chain received `track_speed1` (80 km/h only).
+- **Children without their parent's item.** Departure Sensor (without Automatic Routing) and Shunting Sensor (without Shunting Commands) could both be placed once received. This answers the M3 roadmap question for those two sensors.
+- **Save and reload.** Every load logs `Effect state reset` (the `GameController` level clear path covers saved maps). Bought slots stayed Installed after the reload. The log can't show that, so it rests on what the user saw. Received effects were gone after the reload, and placed objects survived it.
+- **Leak check.** Loading another save cleared received items.
+- **Outside Endless.** The Arrival Sensor mini-tutorial isn't an Economy level: the game unlocks everything (`InitDefaults`), `Reset()`s, then grants `platform_sensor`. It logged no check and F9 did nothing. The mod still logs those unlocks as `Game grant:`, because intercept mode is on, but they don't affect anything outside split mode.
+- **Intercept off.** Purchases log `Upgrade purchased:` and unlock as in the unmodded game.
+- **No game grants on Haarlem.** This confirms that the map has no upgrade overrides.

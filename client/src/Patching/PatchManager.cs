@@ -44,7 +44,8 @@ namespace RailRouteArchipelago.Patching
                     continue;
                 }
                 var target = HarmonyMethod.Merge(attributes);
-                var targetName = target.declaringType?.FullName + "." + target.methodName;
+                var accessorPrefix = target.methodType == MethodType.Getter ? "get_" : target.methodType == MethodType.Setter ? "set_" : "";
+                var targetName = target.declaringType?.FullName + "." + accessorPrefix + target.methodName;
                 try
                 {
                     harmony.CreateClassProcessor(patchType).Patch();

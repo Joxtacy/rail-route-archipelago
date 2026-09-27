@@ -10,7 +10,5 @@ namespace RailRouteArchipelago.Interception
             Log.Info("Upgrade purchased: " + UpgradeInterception.Describe(item));
             return false;
         }
-
-        public bool IsBlocked(ResearchController.ResearchItem item) => false;
     }
 }

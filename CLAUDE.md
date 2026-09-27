@@ -26,4 +26,5 @@ Start with `ROADMAP.md` (where we are), `openspec/specs/` (what's built) and `FI
 - The game logic is in `RailRoute.dll` and isn't obfuscated. Decompile it into a scratch folder (never into the repo) with the command in `FINDINGS.md`. Re-check patch targets after game updates.
 - On Apple Silicon, test through Steam. The game runs under Rosetta because `libsteam_api.bundle` is x86_64-only, and native `arch -arm64` launches crash.
 - Player purchases go through `UnlockUpgradeCommand.Run`. Every other unlock calls `ResearchController.CompleteResearch`, which must never be intercepted.
+- In intercept mode on Endless levels, `ResearchItem.Researched` means "slot bought", and upgrade effects come from the patched `HasResearched`/`ResearchedValue` (and `IsAutomationEnabled`), which answer from received items.
 - In-game behavior can only be verified by the user clicking through the game. Batch those checks into one test round with explicit steps, then confirm them against `Player.log`.

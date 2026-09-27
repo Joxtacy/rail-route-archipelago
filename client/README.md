@@ -3,8 +3,9 @@
 A C# mod loaded by Rail Route's built-in mod loader. There's no BepInEx: the game loads
 `mods/RailRouteArchipelago/RailRouteArchipelago.dll` from its user data folder at startup.
 
-The mod currently patches the system-upgrade purchase with Harmony. With intercept mode on, buying an
-upgrade records a pending location check instead of unlocking it. There's no Archipelago connection yet.
+The mod patches the system-upgrade purchase and the game's upgrade-effect queries with Harmony. With intercept mode on,
+in an Endless level, buying an upgrade slot and owning its upgrade are separate: a purchase records a location check,
+and only a received item unlocks the upgrade. There's no Archipelago connection yet.
 
 ## Build
 
@@ -67,16 +68,21 @@ Create `RailRouteArchipelago.settings.json` next to the DLL:
 
 | Key | Default | Effect |
 |---|---|---|
-| `interceptUpgradePurchases` | `false` | `true`: buying a system upgrade spends its points but doesn't unlock it. Instead it's recorded as a pending check ("Check sent: …" notification), and that upgrade can't be bought again this session. `false`: purchases work normally and are only logged. |
+| `interceptUpgradePurchases` | `false` | `true`: in Endless levels, buying a system upgrade spends its points and marks the slot as bought, but doesn't unlock the upgrade. Instead it's recorded as a location check ("Check sent: …" notification). The upgrade only unlocks once its item is received (see F9). `false`: purchases work normally and are only logged. |
 
 The file is read once at game start. A missing file, or an invalid file or value, means off; invalid files are logged as a warning.
-Pending checks live in memory only and are lost when the game restarts.
+
+With intercept mode on, in an Endless level:
+- **Slot bought** is the game's own upgrade flag. The panel shows the slot as installed, child slots become buyable, and it can't be bought again. Bought slots are saved with the game's save file.
+- **Item received** is what makes the upgrade work (buildable objects, track speed, station count and so on). Levelled upgrades go up one level per received copy, whichever slots are bought. Received items last for the level: leaving it, or loading another level or save, clears them.
+
+Tutorials, the story, Timetable and Rush Hour levels and the editor behave unmodded even with intercept mode on.
 
 ## Debug keys
 
 | Key | When | Effect |
 |---|---|---|
-| F9 | In a level, intercept mode on | Grants the most recently intercepted upgrade (the way a received Archipelago item will) and removes it from pending |
+| F9 | In an Endless level, intercept mode on | Receives the item of the upgrade selected in the upgrade panel, as though Archipelago had sent it. For a levelled upgrade that's one more level. Needs no bought slot. Logs `Debug receive: no upgrade selected` if nothing is selected. |
 
 ## Checking that it works
 
@@ -92,7 +98,10 @@ A healthy start looks like this:
 [Archipelago] Enabled.
 [Archipelago] Intercept mode: off (settings: …/RailRouteArchipelago.settings.json)
 [Archipelago] Runtime: game 3.0.18, platform OSXPlayer, os '…', arch X64, Harmony 2.4.2.0
-[Archipelago] Patched Game.ResearchController.CanResearch: OK
+[Archipelago] Patched Game.ResearchController.HasResearched: OK
+[Archipelago] Patched Game.ResearchController.get_IsAutomationEnabled: OK
+[Archipelago] Patched Game.ResearchController.Reset: OK
+[Archipelago] Patched Game.ResearchController.ResearchedValue: OK
 [Archipelago] Patched Multiplayer.Commands.Game.UnlockUpgradeCommand.Run: OK
 ```
 

@@ -13,8 +13,5 @@ namespace RailRouteArchipelago.Interception
         /// of the purchase (the game's own unlock is skipped), false to let the game unlock normally.
         /// </summary>
         bool OnPurchase(ResearchController.ResearchItem item);
-
-        /// <summary>Whether <paramref name="item"/> must not be purchasable right now.</summary>
-        bool IsBlocked(ResearchController.ResearchItem item);
     }
 }

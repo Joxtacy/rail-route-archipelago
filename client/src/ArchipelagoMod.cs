@@ -29,8 +29,14 @@ namespace RailRouteArchipelago
             PatchManager.Apply();
             if (PatchManager.Applied && !debugKeyInstalled)
             {
-                DebugGrantKey.Install();
+                DebugReceiveKey.Install();
                 debugKeyInstalled = true;
+            }
+            if (PatchManager.Applied)
+            {
+                // Subscribed once here so the first level's grants are seen; OnContextChanged re-attaches
+                // only if a new context brings a different EventManager.
+                GameGrantObserver.Attach(Ctx.Deps?.EventManager);
             }
             await Task.Yield();
         }
@@ -38,6 +44,7 @@ namespace RailRouteArchipelago
         public override async Task OnDisable()
         {
             Unsubscribe();
+            GameGrantObserver.Detach();
             PatchManager.Remove();
             await Task.Yield();
         }
@@ -45,6 +52,10 @@ namespace RailRouteArchipelago
         public override async Task OnContextChanged(IControllers dependencies)
         {
             Log.Info("Context changed: " + dependencies.CurrentMode);
+            if (PatchManager.Applied)
+            {
+                GameGrantObserver.Attach(dependencies.EventManager);
+            }
             if (dependencies.CurrentMode == GameMode.Play)
             {
                 deps = dependencies;
