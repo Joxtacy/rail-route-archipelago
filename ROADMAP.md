@@ -10,8 +10,8 @@ Status: ✅ done · 🔜 next · ⬜ planned
 |---|---|---|---|---|
 | M0 | Mod skeleton | The native mod loader loads our DLL; one cross-platform `net48` build | ✅ | none; predates OpenSpec (`feat(client): add hello-world Rail Route mod`) |
 | M1 | Purchase interception | Harmony patches turn a system-upgrade purchase into a pending check; verified on macOS (Steam/Rosetta) and Windows | ✅ | `2026-09-27-add-harmony-upgrade-intercept` |
-| M2 | APWorld v0 | A minimal Python `rail_route` world that generates a playable seed | 🔜 | |
-| M3 | Client ↔ server | The mod connects to an Archipelago server, sends checks and receives items | ⬜ | |
+| M2 | APWorld v0 | A minimal Python `rail_route` world that generates a playable seed | ✅ | `2026-09-27-add-apworld-v0` |
+| M3 | Client ↔ server | The mod connects to an Archipelago server, sends checks and receives items | 🔜 | |
 | M4 | More checks and items | More locations, plus filler and trap items | ⬜ | |
 | M5 | Playable release | Anyone can install and play a full seed from a release zip | ⬜ | |
 | M6 | Extras | Optional features beyond a complete game | ⬜ | |
@@ -24,15 +24,13 @@ Status: ✅ done · 🔜 next · ⬜ planned
 - Logic: tiers and colours (green/red XP) as regions or rules.
 - Goal: earn the stars on one chosen Endless map.
 - It comes before M3 because the client needs a generated slot to connect to, and the item/location ID tables are defined here.
-- Questions to settle at the start (`/opsx:explore` or `/grill-me`):
-  - Endless only, or Timetable and Rush Hour too?
-  - Which maps?
-  - Exactly what counts as a location?
+- Settled: Endless only; the maps are Haarlem, Prague and Amsterdam; each upgrade slot is a location; the tier gates are throughput-item counts, to be tuned by playtesting.
 
 ### M3 — Client ↔ server
 - Add Archipelago.MultiClient.Net. Check for a clash with the game's Newtonsoft.Json 13.0.2.
 - An Archipelago purchase handler replaces `PendingCheckHandler`.
-- Received items are granted via `ResearchController.CompleteResearch`, the same path F9 tests today.
+- Split flags: the upgrade panel's `Researched` flag means "slot bought", and received items are tracked separately. So received items no longer go through `CompleteResearch` and never consume a slot's location. The APWorld's logic (M2) assumes this.
+- The client's `Id` → location-name table must match the list in `apworld/README.md`. Add a test comparing them.
 - Network callbacks are marshalled to the Unity main thread.
 - Checked and received state is saved per save file and bound to the seed.
 - The upgrade panel shows "Check sent" instead of the misleading "Not enough points".

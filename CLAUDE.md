@@ -1,12 +1,14 @@
 # CLAUDE.md
 
-This repo is an Archipelago integration for Rail Route: a C# client mod in `client/`, with a Python APWorld planned.
+This repo is an Archipelago integration for Rail Route: a C# client mod in `client/` and a Python APWorld in `apworld/rail_route/`.
 Start with `ROADMAP.md` (where we are), `openspec/specs/` (what's built) and `FINDINGS.md` (game internals).
 
 ## Commands
 
 - Build the mod and deploy it to the local game: `cd client && dotnet build -c Release` (add `-p:DeployMod=false` to skip the deploy)
 - Unit tests: `dotnet test --project client.Tests` from the repo root. The root `global.json` opts into Microsoft.Testing.Platform.
+- APWorld tests, from the Archipelago 0.6.7 checkout at `~/PrivateProjects/Archipelago` (it symlinks `worlds/rail_route` to this repo's `apworld/rail_route`, and has a Python 3.13 `.venv`): `.venv/bin/python -m pytest worlds/rail_route/test`. AP's generic suites: `.venv/bin/python -m pytest test/general -k "not Webhost"`. Setup is in `apworld/README.md`.
+- Build the APWorld from the same checkout: `.venv/bin/python Launcher.py "Build APWorlds" -- "Rail Route"` writes `build/apworlds/rail_route.apworld`.
 - Game log: macOS `~/Library/Logs/bitrich/Rail Route/Player.log`, Windows `%USERPROFILE%\AppData\LocalLow\bitrich\Rail Route\Player.log`. Mod lines start with `[Archipelago]`.
 
 ## Workflow

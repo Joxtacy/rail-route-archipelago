@@ -66,3 +66,22 @@ Consequences:
 - Mods must be in their own subfolder (`mods/RailRouteArchipelago/`). DLLs placed directly in `mods/` are silently ignored; the first Windows attempt failed this way.
 - There is no Rosetta setup step for players: Steam already runs Rail Route under Rosetta on Apple Silicon.
 - The MonoMod arm64 detour risk doesn't affect the Steam build. It would only matter for a DRM-free/GOG build (which ships universal `libGalaxy64.dylib`), which is untested.
+
+## Upgrade data for the APWorld (2026-09-27, change add-apworld-v0)
+
+Read from the decompiled 3.0.18 `RailRoute.dll` and the game assets. `apworld/rail_route/data.py` encodes all of it.
+
+- **Upgrade table.** `ResearchController.researchItems` holds 50 upgrades: 36 Green (14/11/11 in tiers 1/2/3) and 14 Red (4/7/3). There are no Blue upgrades, although the enum has the type.
+  - Each upgrade has an `Id`, an optional `Parent`, a colour, a tier and point costs.
+  - English titles come from the `Research Strings Table` localization table, key `research_item_<id>_title`. The world normalizes them to Title Case ("Unlimited stations" → "Unlimited Stations").
+  - Parent gating (`GetUpgradeRequiredForUnlock`): a slot can't be bought until its parent's `Researched` flag is set.
+- **DLC filtering** (`SystemUpgradesPage.InstantiateUpgrades`):
+  - Without Expect Delays, 6 upgrades are hidden: Maintenance Depot, Additional Service Capacity, Expanded Service Capacity, Field Efficiency, Service Automation and Operating Hours.
+  - With Happy Passengers, `custom_contracts_alt` (Green T1) is shown and `custom_contracts` (Red T3) is hidden. Without it, the reverse. The world treats them as one location and one item.
+- **Red income.** Red points only come from red contracts. `ContractGenerator.TryRandomRed` only generates Freight, Regional or Urban contracts when the matching upgrade is researched, and Urban contracts also need a station with a coach yard.
+- **Tier thresholds** (`GetCurrentTier`). Tiers unlock on best points per cycle, not on the number of upgrades bought.
+  - C# defaults: Green T2 at 10 and T3 at 25; Red T2 at 8 and T3 at 30.
+  - Red opens once Green reaches 8 points per cycle (which grants 3 red points) or Green tier 2.
+  - Endless-complete is a Green throughput of 60.
+  - Unverified: the serialized `SystemUpgradeTierDefaults` asset may override these. It's on the M3 test-round list.
+- **Endless maps** used by the world, as level UUID and difficulty: Haarlem (`Haarlem`, 0), Prague (`prague`, 3) and Amsterdam (`Amsterdam`, 5). None of them stores an upgrade-override block in the formats found so far. The M3 test round confirms this at runtime.
