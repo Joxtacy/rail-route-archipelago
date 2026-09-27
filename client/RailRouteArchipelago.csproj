@@ -1,0 +1,83 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Rail Route Archipelago client mod.
+
+    The game's native mod loader (Game.ModController) loads
+      <persistentDataPath>/mods/<Name>/<Name>.dll
+    so AssemblyName, the mods sub-folder and the DLL name must all match.
+
+    Override paths per machine with:
+      dotnet build -p:RailRouteManagedDir=... -p:RailRouteModsDir=...
+    or put them in a git-ignored Directory.Build.props.user / environment variables.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>RailRouteArchipelago</AssemblyName>
+    <RootNamespace>RailRouteArchipelago</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <!-- Default game / mods locations per OS (Steam default library). -->
+  <PropertyGroup Condition="'$(RailRouteManagedDir)' == '' And $([MSBuild]::IsOSPlatform('OSX'))">
+    <RailRouteManagedDir>$(HOME)/Library/Application Support/Steam/steamapps/common/Rail Route/Rail Route.app/Contents/Resources/Data/Managed</RailRouteManagedDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RailRouteModsDir)' == '' And $([MSBuild]::IsOSPlatform('OSX'))">
+    <RailRouteModsDir>$(HOME)/Library/Application Support/RailRoute/mods</RailRouteModsDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RailRouteManagedDir)' == '' And $([MSBuild]::IsOSPlatform('Windows'))">
+    <RailRouteManagedDir>C:\Program Files (x86)\Steam\steamapps\common\Rail Route\Rail Route_Data\Managed</RailRouteManagedDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RailRouteModsDir)' == '' And $([MSBuild]::IsOSPlatform('Windows'))">
+    <RailRouteModsDir>$(USERPROFILE)\AppData\LocalLow\bitrich\Rail Route\mods</RailRouteModsDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RailRouteManagedDir)' == '' And $([MSBuild]::IsOSPlatform('Linux'))">
+    <RailRouteManagedDir>$(HOME)/.local/share/Steam/steamapps/common/Rail Route/Rail Route_Data/Managed</RailRouteManagedDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RailRouteModsDir)' == '' And $([MSBuild]::IsOSPlatform('Linux'))">
+    <RailRouteModsDir>$(HOME)/.config/unity3d/bitrich/Rail Route/mods</RailRouteModsDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Lets net48 build on macOS/Linux without a Windows targeting pack. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Game assemblies: compile against them, never copy them into the mod folder. -->
+  <ItemGroup>
+    <Reference Include="RailRoute">
+      <HintPath>$(RailRouteManagedDir)/RailRoute.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(RailRouteManagedDir)/UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(RailRouteManagedDir)/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="CheckGamePath" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(RailRouteManagedDir)/RailRoute.dll')"
+           Text="RailRoute.dll not found in '$(RailRouteManagedDir)'. Pass -p:RailRouteManagedDir=&lt;game&gt;/.../Managed" />
+  </Target>
+
+  <!-- Copy the built mod into the game's mods folder: mods/RailRouteArchipelago/RailRouteArchipelago.dll -->
+  <Target Name="DeployMod" AfterTargets="Build" Condition="'$(DeployMod)' != 'false' And '$(RailRouteModsDir)' != ''">
+    <ItemGroup>
+      <ModFiles Include="$(TargetDir)$(AssemblyName).dll;$(TargetDir)$(AssemblyName).pdb" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ModFiles)" DestinationFolder="$(RailRouteModsDir)/$(AssemblyName)" SkipUnchangedFiles="true" Condition="Exists('%(FullPath)')" />
+    <Message Importance="high" Text="Deployed $(AssemblyName) to $(RailRouteModsDir)/$(AssemblyName)" />
+  </Target>
+
+</Project>
