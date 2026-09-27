@@ -37,6 +37,11 @@ Status: ✅ done · 🔜 next · ⬜ planned
 - Checked and received state is saved per save file and bound to the seed.
 - The upgrade panel shows "Check sent" instead of the misleading "Not enough points".
 - Connection settings (host, slot, password) come from the settings file for now.
+- In-game test round. These questions came up while planning M2 and can only be answered in the game:
+  - Do child upgrades work without their parent's item? In particular: the departure, arrival, routing and relay sensors without Automatic Routing, and the shunting and stabling sensors without Shunting Commands.
+  - Log each upgrade's locked/researched state at level start on Haarlem, Prague and Amsterdam, to confirm that none of these maps overrides the upgrade set.
+  - Log the tier thresholds at runtime, to see whether the serialized `SystemUpgradeTierDefaults` overrides the C# defaults (Green 10/25, Red 8/30).
+  - Check whether any of the three maps comes from the Curated Map Pack DLC.
 
 ### M4 — More checks and items
 - Locations:
