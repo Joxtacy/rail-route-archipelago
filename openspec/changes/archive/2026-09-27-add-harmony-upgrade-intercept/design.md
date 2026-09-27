@@ -58,9 +58,9 @@ The mod's folder is found from `typeof(ArchipelagoMod).Assembly.Location`. The f
 
 ### D6: All-or-nothing patch application
 - `harmony.PatchAll(typeof(ArchipelagoMod).Assembly)` runs in a try/catch.
-- On any exception it calls `harmony.UnpatchSelf()`, logs the error with platform and architecture, marks the mod degraded, and queues a side notification for the next level start. Notifications need an in-play `NotificationController`.
+- On any exception it calls `harmony.UnpatchAll(HarmonyId)` (only our patches), logs the error with platform and architecture, marks the mod degraded, and queues a side notification for the next level start. Notifications need an in-play `NotificationController`.
 - A static guard prevents re-patching on repeated `OnEnable` or context changes.
-- `OnDisable` calls `UnpatchSelf()`.
+- `OnDisable` calls `UnpatchAll(HarmonyId)`.
 
 ### D7: Debug grant key for verifying the "mod grants an upgrade" path
 In play mode, a key polled from a small `MonoBehaviour` the mod creates (default **F9**) grants the most recently intercepted upgrade via `ResearchController.CompleteResearch(item.Research, ignoreLockedState: true)` and removes it from pending. This exercises the path Archipelago item receipt will use. It is only active when intercept mode is on.
@@ -81,6 +81,7 @@ The startup log line contains:
 - **Duplicated cost deduction** (D2). → Costs are read from item fields. Verification compares the wallet before and after with the unmodded behavior.
 - **Newtonsoft version clash** once Archipelago.MultiClient.Net lands. → Not in this change. It is noted for the client-connection change.
 - **In-memory pending checks are lost on reload.** A re-bought upgrade after reload records the check again. → Accepted for this proof. Persistence belongs to the Archipelago state change.
+- **Misleading panel status.** After an intercepted purchase, the upgrade panel shows "Not enough points", because the `CanResearch` postfix returns `false` and no prerequisite is missing. This was observed in the round B test and is accepted for this change. A proper "Check sent" status in the panel is deferred to the Archipelago-connection change.
 - **Windows unverified from this machine.** → A manual verification task on the user's Windows install checks the `Player.log` lines.
 
 ## Migration Plan

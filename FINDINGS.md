@@ -52,3 +52,17 @@ Newtonsoft duplicate clash. Marshal callbacks to the Unity main thread.
 2. Add Harmony, patch the research purchase → confirm detours on arm64 (else Rosetta)
 3. Add MultiClient.Net, connect to a local AP server
 4. Write the `rail_route` APWorld (Python) with items/locations/regions from the research tree
+
+## Platform results: Harmony spike (2026-09-27, change add-harmony-upgrade-intercept)
+
+| Mode | Result |
+|---|---|
+| macOS via Steam (default) | **Works.** Steam launches the game under Rosetta (`vmmap`: `X86-64 (translated)`, although `steam_osx` itself is ARM64). Harmony 2.4.2 patched `UnlockUpgradeCommand.Run`. A real purchase logged `Upgrade purchased: manual_signal_security (Green, tier 1, cost 1/0/0)`. |
+| macOS native arm64 (`arch -arm64`) | **Not applicable to the Steam build.** `PlugIns/libsteam_api.bundle` is x86_64-only (every other plugin is universal), so startup throws `DllNotFoundException: libsteam_api` in `SceneController.Awake`. The mod loader never runs. |
+| Windows 11 x64 via Steam | **Works.** Loaded from `%USERPROFILE%\AppData\LocalLow\bitrich\Rail Route\mods\RailRouteArchipelago\`. `Runtime: … platform WindowsPlayer, arch X64, Harmony 2.4.2.0`. Both patches OK, and a real purchase was intercepted: `Check recorded: auto_accept (Green, tier 1, cost 3/0/0)`. |
+
+Consequences:
+- The same DLL build (compiled on macOS) runs unchanged on macOS and Windows.
+- Mods must be in their own subfolder (`mods/RailRouteArchipelago/`). DLLs placed directly in `mods/` are silently ignored; the first Windows attempt failed this way.
+- There is no Rosetta setup step for players: Steam already runs Rail Route under Rosetta on Apple Silicon.
+- The MonoMod arm64 detour risk doesn't affect the Steam build. It would only matter for a DRM-free/GOG build (which ships universal `libGalaxy64.dylib`), which is untested.

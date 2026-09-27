@@ -2,7 +2,8 @@ using System.Threading.Tasks;
 using Game;
 using Game.Context;
 using Game.Mod;
-using UnityEngine;
+using RailRouteArchipelago.Interception;
+using RailRouteArchipelago.Patching;
 using Utils;
 
 namespace RailRouteArchipelago
@@ -13,10 +14,9 @@ namespace RailRouteArchipelago
     /// </summary>
     public class ArchipelagoMod : AbstractMod
     {
-        private const string LogPrefix = "[Archipelago] ";
-
         private IControllers deps;
         private bool subscribed;
+        private static bool debugKeyInstalled;
 
         public override CachedLocalizedString Title => "Archipelago";
 
@@ -24,19 +24,27 @@ namespace RailRouteArchipelago
 
         public override async Task OnEnable()
         {
-            Debug.Log(LogPrefix + "Enabled. Game version " + Application.version + ", platform " + Application.platform);
+            Log.Info("Enabled.");
+            UpgradeInterception.Configure();
+            PatchManager.Apply();
+            if (PatchManager.Applied && !debugKeyInstalled)
+            {
+                DebugGrantKey.Install();
+                debugKeyInstalled = true;
+            }
             await Task.Yield();
         }
 
         public override async Task OnDisable()
         {
             Unsubscribe();
+            PatchManager.Remove();
             await Task.Yield();
         }
 
         public override async Task OnContextChanged(IControllers dependencies)
         {
-            Debug.Log(LogPrefix + "Context changed: " + dependencies.CurrentMode);
+            Log.Info("Context changed: " + dependencies.CurrentMode);
             if (dependencies.CurrentMode == GameMode.Play)
             {
                 deps = dependencies;
@@ -67,11 +75,14 @@ namespace RailRouteArchipelago
 
         private void OnLevelStarted(Game.Level.Level level)
         {
-            Debug.Log(LogPrefix + "Level started: " + level.LevelDefinition.Uuid);
-            deps.NotificationController.CreateSideNotification()
-                .Text("Hello from Archipelago!")
-                .CanBeDismissed()
-                .NotSaved();
+            Log.Info("Level started: " + level.LevelDefinition.Uuid);
+            if (PatchManager.Degraded)
+            {
+                deps.NotificationController.CreateSideNotification()
+                    .Text("Archipelago mod is running degraded: patching failed, Archipelago features are unavailable. See Player.log.")
+                    .CanBeDismissed()
+                    .NotSaved();
+            }
         }
     }
 }

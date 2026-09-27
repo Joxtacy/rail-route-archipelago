@@ -19,7 +19,8 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <!-- Copies 0Harmony.dll into the output; game DLLs below stay Private=false. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <DebugType>portable</DebugType>
   </PropertyGroup>
 
@@ -48,6 +49,8 @@
   <ItemGroup>
     <!-- Lets net48 build on macOS/Linux without a Windows targeting pack. -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <!-- Not bundled with the game; shipped next to the mod DLL. -->
+    <PackageReference Include="Lib.Harmony" Version="2.4.2" />
   </ItemGroup>
 
   <!-- Game assemblies: compile against them, never copy them into the mod folder. -->
@@ -64,6 +67,14 @@
       <HintPath>$(RailRouteManagedDir)/UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="Unity.InputSystem">
+      <HintPath>$(RailRouteManagedDir)/Unity.InputSystem.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(RailRouteManagedDir)/Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <Target Name="CheckGamePath" BeforeTargets="ResolveAssemblyReferences">
@@ -74,7 +85,7 @@
   <!-- Copy the built mod into the game's mods folder: mods/RailRouteArchipelago/RailRouteArchipelago.dll -->
   <Target Name="DeployMod" AfterTargets="Build" Condition="'$(DeployMod)' != 'false' And '$(RailRouteModsDir)' != ''">
     <ItemGroup>
-      <ModFiles Include="$(TargetDir)$(AssemblyName).dll;$(TargetDir)$(AssemblyName).pdb" />
+      <ModFiles Include="$(TargetDir)$(AssemblyName).dll;$(TargetDir)$(AssemblyName).pdb;$(TargetDir)0Harmony.dll" />
     </ItemGroup>
     <Copy SourceFiles="@(ModFiles)" DestinationFolder="$(RailRouteModsDir)/$(AssemblyName)" SkipUnchangedFiles="true" Condition="Exists('%(FullPath)')" />
     <Message Importance="high" Text="Deployed $(AssemblyName) to $(RailRouteModsDir)/$(AssemblyName)" />
