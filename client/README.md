@@ -117,43 +117,79 @@ Notifications:
 | Archipelago connection failed – see Player.log | The server couldn't be reached or refused the login. The log lists the reasons. |
 | Archipelago disconnected | The connection dropped during play. Received items keep working until you leave the level. |
 | This level doesn't match the Archipelago seed | The slot was generated for another map, or with other Expect Delays / Happy Passengers settings. The log names each difference. The mod stays connected and still applies items. On another map it adds "– checks are not sent" and sends no checks for that connection, so a save from another map can't check this seed's locations. |
-| Restored *n* Archipelago items | The server resent the slot's items after connecting. |
+| This save belongs to another Archipelago seed – disconnected | The loaded save is bound to another seed or slot, or its state file can't be read (see "Save state" below). The mod sent nothing, applied no items and disconnected. |
+| Restored *n* Archipelago items, *m* new | The server resent the slot's items after connecting. *n* were already in the save, *m* arrived since it was written (", *m* new" is left out when there are none). |
 | Archipelago goal complete | The goal was sent to the server (see "Goal" below). |
-| Endless-complete star found in the save; the goal isn't sent automatically. Press Shift+F10 to send it. | The loaded save already has the Endless-complete star from an earlier game run. See "Goal" below. |
 
 **Sending checks.** Buying a slot while connected sends its location to the server at once (`Check sent: <name> (<id>)`
 in the log). After every login the mod sends every bought slot again in one batch (`Resent <n> checks`), which covers
 slots bought offline and slots restored from the save. Slots the game unlocked itself (level configuration, "unlock
-all") aren't sent, and a location that isn't in the seed is skipped with a warning.
+all") aren't sent, and a location that isn't in the seed is skipped with a warning. Checks are only sent for a save
+bound to the connected seed and slot (see "Save state").
 
 **Receiving items.** Each item the server sends is mapped by name to its upgrade (see "Item names" in
 `apworld/README.md`) and received like F9 does, with its side effects and unlock popup. While the system upgrades menu is open the game shows no popup, which is always
 the case for the item your own purchase sends back, so a "Received <upgrade> from <player>" notification appears instead. Progressive items add one level.
 On connect the server resends every item the slot has received so far. The mod applies that replay without a popup per
-item and shows one "Restored *n* Archipelago items" notification instead. Filler items (Green XP Bundle) are logged
+item and shows one "Restored *n* Archipelago items, *m* new" notification instead. The items the save already had (its
+received-item index) are restored without their one-shot side effects, so the auto-accept and auto-reverse settings at
+each station and the alert preferences stay as you left them. Items that arrived since the save was written apply with
+their side effects. Filler items (Green XP Bundle) are logged
 as `Filler item ignored` and have no effect yet.
+
+## Save state
+
+In intercept mode, each save of an Endless level gets a small state file next to it in the game's `saves` folder:
+the save's file name plus `.ap.json`, for example `haarlem_My game_09-12-30_3f2a1.ap.json` next to
+`haarlem_My game_09-12-30_3f2a1.mp.lz4`. The game's own save file is never changed.
+
+| OS | Save folder |
+|---|---|
+| macOS | `~/Library/Application Support/RailRoute/saves` |
+| Windows | `%USERPROFILE%\AppData\LocalLow\bitrich\Rail Route\saves` |
+| Linux | `~/.config/unity3d/bitrich/Rail Route/saves` (unverified) |
+
+It holds:
+- the **binding**: the seed name, team, slot number and slot name the save was played with
+- the **sent checks**: every location the mod handed to the server
+- the **goal state**: `none`, `pending`, `sent`, or `ineligible` (the star predates the binding)
+- the **received-item index**: how many of the slot's items have taken effect in the level
+
+The mod writes it whenever the game writes a save (manual saves, autosaves), deletes it when the game deletes the save
+(including pruned autosaves), and renames it with the save. The game's save list ignores these files.
+
+- **Binding.** A new game, or a save without a state file, binds to the seed and slot at its first successful login on
+  the seed's map (`Save bound to <seed>, slot <name> (<n>)`). A loaded save gets its state file at once. On another
+  map the save stays unbound.
+- **Another seed's save.** A save bound to another seed or slot is refused after login: no checks, no goal, no items.
+  The log names both bindings (`Save refused: bound to …`), a notification appears and the mod disconnects.
+- **Unreadable state file.** A state file that can't be read is logged with its path and treated as another seed's:
+  the save is refused. The mod leaves that file as it is, and later saves of the level are refused the same way.
+- **Unbinding.** To use a save with another seed, delete its `.ap.json` by hand. It binds again at the next login.
+- **Steam Cloud** syncs only the `.mp.lz4` save files, not the state files. On another machine a synced save shows up
+  unbound, binds at its first login, and a star already in it can't be sent.
 
 ## Goal
 
 The seed's goal (`endless_complete`) is the level's Endless-complete star: the third Endless star, which the game
 awards once one cycle's combined green and red score reaches 60.
 
-- **Sent live.** When the game awards that star while you play, on the seed's map and connected, the mod reports the
-  goal to the server (`Goal sent: Endless complete on <map>` and an "Archipelago goal complete" notification). The
-  green and red stars don't count.
-- **Not sent from a save.** A save that already has the star (for example from before this seed) never sends the goal
-  by itself. The mod logs that it found the star and points at Shift+F10.
-- **Pending while offline.** A star earned while not connected, or whose send failed, stays pending for that map until
-  the game quits (`Goal reached, not sent: not connected`). Reload the save once the server is back, in the same game
-  run, and the goal is sent after login (`… (pending since offline)`). After a restart, use Shift+F10.
+- **Sent live.** When the game awards that star while you play, on the seed's map, connected, and with the save bound
+  to that seed, the mod reports the goal to the server (`Goal sent: Endless complete on <map>` and an "Archipelago goal
+  complete" notification). The green and red stars don't count.
+- **Sent from a bound save.** After login on a save bound to the seed that has the star and whose goal state isn't
+  `sent`, the mod reports the goal (`… (from the save)`). That covers a star earned offline: it's `pending` in the save
+  (`Goal reached, not sent: not connected`), survives a restart with the save, and is sent at the next login.
+- **Never from before the binding.** A star the save already had when it was bound, such as an old save or a game
+  played offline from the start, makes the goal state `ineligible`. It's never sent (`Goal not sent: the star predates
+  the binding`).
 - **Refused.** On another map than the seed's, or with a goal the mod doesn't know, the goal isn't sent and the log
-  says why (`Goal reached, not sent: <reason>`). The goal is sent at most once per game run.
+  says why. A send that fails leaves the goal `pending` for the next login.
 
 ## Keys
 
 | Key | When | Effect |
 |---|---|---|
-| Shift+F10 | In an Endless level, intercept mode on | **Sends the goal, which can't be undone.** Only when connected, on the seed's map, with a supported goal, and when the loaded level has the Endless-complete star; otherwise it logs `Goal not sent manually: <reason>`. For a star earned in an earlier game run. Plain F10 does nothing. |
 | F9 | In an Endless level, intercept mode on (debug) | Receives the item of the upgrade selected in the upgrade panel, as though Archipelago had sent it. For a levelled upgrade that's one more level. Needs no bought slot. Logs `Debug receive: no upgrade selected` if nothing is selected. |
 
 ## Checking that it works
@@ -176,20 +212,25 @@ A healthy start looks like this:
 [Archipelago] Patched Game.ResearchController.get_IsAutomationEnabled: OK
 [Archipelago] Patched Game.ResearchController.Reset: OK
 [Archipelago] Patched Game.ResearchController.ResearchedValue: OK
+[Archipelago] Patched Game.Level.StorageController.DeleteSave: OK
+[Archipelago] Patched Game.Level.StorageController.Rename: OK
+[Archipelago] Patched Game.Level.StorageController.Save: OK
 [Archipelago] Patched Multiplayer.Commands.Game.UnlockUpgradeCommand.Run: OK
 ```
 
 When an Endless level loads, the mod logs the level (`Level loaded: <map>, storage …`), one `Upgrade …` line per
-upgrade, the tier thresholds and the throughput rewards, then either `Archipelago offline: no server/slot configured` or:
+upgrade, the tier thresholds and the throughput rewards, the save state (`Save state (new game): unbound, …`), then
+either `Archipelago offline: no server/slot configured` or:
 
 ```
 [Archipelago] Connecting to localhost:38281 as Player
 [Archipelago] Connected to localhost:38281 as Player (team 0, slot 1)
+[Archipelago] Save bound to 12345678901234567890, slot Player (1)
 [Archipelago] Resent 0 checks
-[Archipelago] Received item list replaced: 0 item(s)
+[Archipelago] Received item list replaced: 0 item(s), 0 restored, 0 new
 ```
 
-The item list can also arrive just before the `Connected` line.
+The item list is applied after the binding decision, even when it arrives before the `Connected` line.
 
 If patching fails (for example after a game update), you'll see `Patching failed on …` instead. The game stays playable
 without Archipelago features, and a "running degraded" notification appears when a level starts.

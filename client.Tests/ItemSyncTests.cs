@@ -105,6 +105,42 @@ namespace RailRouteArchipelago.Tests
         }
 
         [Fact]
+        public void Seeded_ReplaceKnowsTheSeed()
+        {
+            var sync = new ItemSync();
+            sync.Seed(5);
+
+            Assert.Equal(0, sync.Expected);
+            Assert.Equal(ItemSyncAction.Replace, sync.Accept(0, 7));
+            Assert.Equal(5, sync.Known);
+            Assert.Equal(7, sync.Expected);
+        }
+
+        [Fact]
+        public void SeedPastTheList_KnownCappedAtLength()
+        {
+            var sync = new ItemSync();
+            sync.Seed(9);
+
+            sync.Accept(0, 7);
+
+            Assert.Equal(7, sync.Known);
+        }
+
+        [Fact]
+        public void Seed_OnlyForTheNextReplace()
+        {
+            var sync = new ItemSync();
+            sync.Seed(5);
+            sync.Accept(0, 7);
+            sync.Accept(9, 1);
+
+            sync.Accept(0, 8);
+
+            Assert.Equal(7, sync.Known);
+        }
+
+        [Fact]
         public void Reset_StartsOver()
         {
             var sync = new ItemSync();

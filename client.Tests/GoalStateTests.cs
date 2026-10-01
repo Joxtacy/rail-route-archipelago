@@ -1,144 +1,130 @@
-using System;
 using RailRouteArchipelago.Core;
 using Xunit;
 
 namespace RailRouteArchipelago.Tests
 {
-    public sealed class GoalStateTests : IDisposable
+    public class GoalStateTests
     {
-        private const string Haarlem = "haarlem-uuid";
-        private const string Prague = "prague-uuid";
-
-        public GoalStateTests() => GoalState.Reset();
-
-        public void Dispose() => GoalState.Reset();
-
         [Fact]
-        public void LiveWhileConnected_Sends()
+        public void Bind_WithTheStar_Ineligible()
         {
-            var decision = GoalState.OnReachedLive(Haarlem, connected: true, mapMatches: true, goalSupported: true);
-
-            Assert.True(decision.Send);
-        }
-
-        [Fact]
-        public void LiveWhileOffline_Pending_ThenLoginOnSameMapSends()
-        {
-            var live = GoalState.OnReachedLive(Haarlem, connected: false, mapMatches: true, goalSupported: true);
-
-            Assert.False(live.Send);
-            Assert.Equal(GoalRefusal.NotConnected, live.Refusal);
-            Assert.True(GoalState.IsPendingFor(Haarlem));
-
-            var login = GoalState.OnLogin(Haarlem, mapMatches: true, goalSupported: true, levelGranted: true);
-
-            Assert.True(login.Send);
-        }
-
-        [Fact]
-        public void LoginOnAnotherMap_Refuses_StillPending()
-        {
-            GoalState.OnReachedLive(Haarlem, connected: false, mapMatches: true, goalSupported: true);
-
-            var login = GoalState.OnLogin(Prague, mapMatches: true, goalSupported: true, levelGranted: true);
-
-            Assert.False(login.Send);
-            Assert.Equal(GoalRefusal.NotPending, login.Refusal);
-            Assert.True(GoalState.IsPendingFor(Haarlem));
-        }
-
-        [Fact]
-        public void LoginWithLevelNotGranted_Refuses()
-        {
-            GoalState.OnReachedLive(Haarlem, connected: false, mapMatches: true, goalSupported: true);
-
-            var login = GoalState.OnLogin(Haarlem, mapMatches: true, goalSupported: true, levelGranted: false);
-
-            Assert.Equal(GoalRefusal.LevelNotGranted, login.Refusal);
-        }
-
-        [Fact]
-        public void LoginWithNothingPending_Refuses()
-        {
-            var login = GoalState.OnLogin(Haarlem, mapMatches: true, goalSupported: true, levelGranted: true);
-
-            Assert.Equal(GoalRefusal.NotPending, login.Refusal);
-        }
-
-        [Fact]
-        public void LiveWithMapMismatch_Refuses_NotPending()
-        {
-            var live = GoalState.OnReachedLive(Prague, connected: true, mapMatches: false, goalSupported: true);
-
-            Assert.Equal(GoalRefusal.MapMismatch, live.Refusal);
-            Assert.Null(GoalState.PendingMap);
-        }
-
-        [Fact]
-        public void LiveWithUnsupportedGoal_Refuses()
-        {
-            var live = GoalState.OnReachedLive(Haarlem, connected: true, mapMatches: true, goalSupported: false);
-
-            Assert.Equal(GoalRefusal.UnsupportedGoal, live.Refusal);
-        }
-
-        [Fact]
-        public void AfterSent_EveryEntryPointRefusesAlreadySent()
-        {
-            GoalState.MarkSent();
-
-            Assert.Equal(GoalRefusal.AlreadySent,
-                GoalState.OnReachedLive(Haarlem, connected: true, mapMatches: true, goalSupported: true).Refusal);
-            Assert.Equal(GoalRefusal.AlreadySent,
-                GoalState.OnLogin(Haarlem, mapMatches: true, goalSupported: true, levelGranted: true).Refusal);
-            Assert.Equal(GoalRefusal.AlreadySent,
-                GoalState.OnManual(Haarlem, connected: true, mapMatches: true, goalSupported: true, levelGranted: true).Refusal);
-        }
-
-        [Fact]
-        public void MarkSent_ClearsPending()
-        {
-            GoalState.OnReachedLive(Haarlem, connected: false, mapMatches: true, goalSupported: true);
-
-            GoalState.MarkSent();
-
-            Assert.True(GoalState.Sent);
-            Assert.Null(GoalState.PendingMap);
-        }
-
-        [Fact]
-        public void Failed_PendingAgain()
-        {
-            GoalState.MarkSent();
-
-            GoalState.MarkFailed(Haarlem);
-
-            Assert.False(GoalState.Sent);
-            Assert.True(GoalState.IsPendingFor(Haarlem));
-            Assert.True(GoalState.OnLogin(Haarlem, mapMatches: true, goalSupported: true, levelGranted: true).Send);
-        }
-
-        [Fact]
-        public void Manual_AllConditions_Sends()
-        {
-            var decision = GoalState.OnManual(Haarlem, connected: true, mapMatches: true, goalSupported: true, levelGranted: true);
-
-            Assert.True(decision.Send);
+            Assert.Equal(GoalStatus.Ineligible, GoalState.OnBind(GoalStatus.None, granted: true));
         }
 
         [Theory]
-        [InlineData(false, true, true, true, GoalRefusal.NotConnected)]
-        [InlineData(true, false, true, true, GoalRefusal.MapMismatch)]
-        [InlineData(true, true, false, true, GoalRefusal.UnsupportedGoal)]
-        [InlineData(true, true, true, false, GoalRefusal.LevelNotGranted)]
-        public void Manual_EachFailedCondition_RefusesWithItsReason(bool connected, bool mapMatches, bool goalSupported,
-            bool levelGranted, GoalRefusal expected)
+        [InlineData(GoalStatus.None)]
+        [InlineData(GoalStatus.Pending)]
+        public void Bind_WithoutTheStar_Unchanged(GoalStatus state)
         {
-            var decision = GoalState.OnManual(Haarlem, connected, mapMatches, goalSupported, levelGranted);
+            Assert.Equal(state, GoalState.OnBind(state, granted: false));
+        }
 
-            Assert.False(decision.Send);
+        [Theory]
+        [InlineData(GoalStatus.None)]
+        [InlineData(GoalStatus.Pending)]
+        public void Login_BoundGranted_NotSent_Sends(GoalStatus state)
+        {
+            var decision = GoalState.OnLogin(state, bound: true, mapMatches: true, goalSupported: true, granted: true);
+
+            Assert.True(decision.Send);
+            Assert.Equal(state, decision.State);
+        }
+
+        [Fact]
+        public void Login_Sent_Refuses()
+        {
+            var decision = GoalState.OnLogin(GoalStatus.Sent, bound: true, mapMatches: true, goalSupported: true, granted: true);
+
+            Assert.Equal(GoalRefusal.AlreadySent, decision.Refusal);
+            Assert.Equal(GoalStatus.Sent, decision.State);
+        }
+
+        [Fact]
+        public void Login_Ineligible_RefusesWithPredatesReason()
+        {
+            var decision = GoalState.OnLogin(GoalStatus.Ineligible, bound: true, mapMatches: true, goalSupported: true, granted: true);
+
+            Assert.Equal(GoalRefusal.PredatesBinding, decision.Refusal);
+            Assert.Equal("the star predates the binding", decision.Reason);
+            Assert.Equal(GoalStatus.Ineligible, decision.State);
+        }
+
+        [Fact]
+        public void Login_NotGranted_Refuses()
+        {
+            var decision = GoalState.OnLogin(GoalStatus.None, bound: true, mapMatches: true, goalSupported: true, granted: false);
+
+            Assert.Equal(GoalRefusal.LevelNotGranted, decision.Refusal);
+        }
+
+        [Theory]
+        [InlineData(false, true, true, GoalRefusal.MapMismatch)]
+        [InlineData(true, false, true, GoalRefusal.UnsupportedGoal)]
+        [InlineData(true, true, false, GoalRefusal.ForeignSave)]
+        public void Login_EachFailedCondition_RefusesWithItsReason(bool mapMatches, bool goalSupported, bool bound, GoalRefusal expected)
+        {
+            var decision = GoalState.OnLogin(GoalStatus.Pending, bound, mapMatches, goalSupported, granted: true);
+
             Assert.Equal(expected, decision.Refusal);
-            Assert.Null(GoalState.PendingMap);
+            Assert.Equal(GoalStatus.Pending, decision.State);
+        }
+
+        [Fact]
+        public void Live_ConnectedAndBound_Sends()
+        {
+            var decision = GoalState.OnReachedLive(GoalStatus.None, connected: true, bound: true, mapMatches: true, goalSupported: true);
+
+            Assert.True(decision.Send);
+        }
+
+        [Fact]
+        public void Live_Offline_Pending()
+        {
+            var decision = GoalState.OnReachedLive(GoalStatus.None, connected: false, bound: false, mapMatches: false, goalSupported: false);
+
+            Assert.Equal(GoalRefusal.NotConnected, decision.Refusal);
+            Assert.Equal(GoalStatus.Pending, decision.State);
+        }
+
+        [Fact]
+        public void Live_MapMismatch_Refuses_NotPending()
+        {
+            var decision = GoalState.OnReachedLive(GoalStatus.None, connected: true, bound: false, mapMatches: false, goalSupported: true);
+
+            Assert.Equal(GoalRefusal.MapMismatch, decision.Refusal);
+            Assert.Equal(GoalStatus.None, decision.State);
+        }
+
+        [Theory]
+        [InlineData(GoalStatus.Sent, GoalRefusal.AlreadySent)]
+        [InlineData(GoalStatus.Ineligible, GoalRefusal.PredatesBinding)]
+        public void Live_SentOrIneligible_RefusesEvenOffline(GoalStatus state, GoalRefusal expected)
+        {
+            var decision = GoalState.OnReachedLive(state, connected: false, bound: true, mapMatches: true, goalSupported: true);
+
+            Assert.Equal(expected, decision.Refusal);
+            Assert.Equal(state, decision.State);
+        }
+
+        [Fact]
+        public void PendingThenBindWithTheStar_Ineligible()
+        {
+            var live = GoalState.OnReachedLive(GoalStatus.None, connected: false, bound: false, mapMatches: true, goalSupported: true);
+
+            var bound = GoalState.OnBind(live.State, granted: true);
+
+            Assert.Equal(GoalStatus.Ineligible, bound);
+            Assert.False(GoalState.OnLogin(bound, bound: true, mapMatches: true, goalSupported: true, granted: true).Send);
+        }
+
+        [Fact]
+        public void SentThenFailed_Pending_SendsOnLogin()
+        {
+            var failed = GoalState.MarkFailed();
+
+            Assert.Equal(GoalStatus.Sent, GoalState.MarkSent());
+            Assert.Equal(GoalStatus.Pending, failed);
+            Assert.True(GoalState.OnLogin(failed, bound: true, mapMatches: true, goalSupported: true, granted: true).Send);
         }
 
         [Fact]
@@ -148,7 +134,9 @@ namespace RailRouteArchipelago.Tests
             Assert.Equal("the level's map doesn't match the seed", GoalState.ReasonText(GoalRefusal.MapMismatch));
             Assert.Equal("the level hasn't earned the Endless-complete star", GoalState.ReasonText(GoalRefusal.LevelNotGranted));
             Assert.Contains("endless_complete", GoalState.ReasonText(GoalRefusal.UnsupportedGoal));
-            Assert.Contains("already sent", GoalState.ReasonText(GoalRefusal.AlreadySent));
+            Assert.Equal("the goal was already sent from this save", GoalState.ReasonText(GoalRefusal.AlreadySent));
+            Assert.Equal("the star predates the binding", GoalState.ReasonText(GoalRefusal.PredatesBinding));
+            Assert.Equal("the save is bound to another seed", GoalState.ReasonText(GoalRefusal.ForeignSave));
         }
 
         [Theory]

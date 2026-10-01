@@ -11,7 +11,7 @@ Status: ✅ done · 🔜 next · ⬜ planned
 | M0 | Mod skeleton | The native mod loader loads our DLL; one cross-platform `net48` build | ✅ | none; predates OpenSpec (`feat(client): add hello-world Rail Route mod`) |
 | M1 | Purchase interception | Harmony patches turn a system-upgrade purchase into a pending check; verified on macOS (Steam/Rosetta) and Windows | ✅ | `2026-09-27-add-harmony-upgrade-intercept` |
 | M2 | APWorld v0 | A minimal Python `rail_route` world that generates a playable seed | ✅ | `2026-09-27-add-apworld-v0` |
-| M3 | Client ↔ server | The mod connects to an Archipelago server, sends checks and receives items | ✅ | `2026-09-27-client-split-flags`, `2026-09-27-client-ap-connection` |
+| M3 | Client ↔ server | The mod connects to an Archipelago server, sends checks and receives items | ✅ | `2026-09-27-client-split-flags`, `2026-09-27-client-ap-connection`, `2026-10-01-client-seed-binding` |
 | M4 | More checks and items | More locations, plus filler and trap items | ⬜ | |
 | M5 | Playable release | Anyone can install and play a full seed from a release zip | ⬜ | `2026-10-01-client-goal-completion` |
 | M6 | Extras | Optional features beyond a complete game | ⬜ | |
@@ -39,14 +39,15 @@ Status: ✅ done · 🔜 next · ⬜ planned
   - ✅ Runtime tier thresholds: Green 10/25 and Red 8/30 on all three maps, the C# defaults (plus Blue 2/5).
   - ✅ Curated Map Pack: Haarlem's `Storage` is `CuratedMapPack`, and Prague's and Amsterdam's is `Main`.
 - Follow-ups (not blocking M3):
-  - Save checked and received state per save file, bound to the seed. That would avoid replaying side effects on every connect and would let the mod refuse a save from another seed.
+  - ✅ Save checked and received state per save file, bound to the seed: a `.ap.json` sidecar per save, the replay restores the save's items without side effects, and a save from another seed is refused (`client-seed-binding`, FINDINGS.md "Save files").
   - The upgrade panel's "Check sent" label instead of the misleading "Not enough points", and offline wording for the "Check sent" notification (it also shows when nothing was sent).
   - Check whether Haarlem needs the Curated Map Pack DLC. If it does, change the APWorld's default map.
   - A clearer connection-failure reason: an unreachable server logs `A task was canceled` after the real socket error.
   - Check a hosted `wss://` room (TLS on the game's Mono).
-  - Untested in the game: logging in to a password-protected room, and buying a slot live on a map-mismatched level (checks should stay blocked). Run both in the next change's test round.
+  - ✅ Logging in to a password-protected room, and buying a slot live on a map-mismatched level (checks stay blocked), both tested in the `client-seed-binding` test round.
   - The in-game connect screen (M5) and filler handling (M4).
-  - Seed binding (above) would let the mod resend a goal from a save automatically, and keep a pending goal across game runs. Retire the Shift+F10 fallback once it does.
+  - ✅ Seed binding sends a goal from a bound save automatically and keeps a pending goal across game runs; the Shift+F10 fallback is retired (`client-seed-binding`).
+  - Sidecars don't sync through Steam Cloud (it only syncs `saves/*.mp.lz4`). On another machine a synced save shows up unbound, and a star already in it can't be sent.
 
 ### M4 — More checks and items
 - Locations:
@@ -60,7 +61,7 @@ Status: ✅ done · 🔜 next · ⬜ planned
 
 ### M5 — Playable release
 - An in-game connect screen.
-- ✅ Goal completion reported to the server: the Endless-complete star earned live, a pending goal sent after the next login in the same game run, and Shift+F10 for a star from a save (`client-goal-completion`, FINDINGS.md "Goal completion").
+- ✅ Goal completion reported to the server: the Endless-complete star earned live, or from a save bound to the seed, including a goal left pending offline in an earlier game run. A star from before the binding is never sent (`client-goal-completion`, `client-seed-binding`, FINDINGS.md "Goal completion").
 - A release zip per OS (`mods/RailRouteArchipelago/` plus the `.apworld`).
 - A player setup guide. Linux paths confirmed.
 

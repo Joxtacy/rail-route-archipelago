@@ -13,8 +13,9 @@ namespace RailRouteArchipelago.Interception
     /// <summary>
     /// Reports the Archipelago goal when the level's Endless-complete star is awarded live. StarAwarded
     /// doesn't name the star, so the handler reads the endless-complete reward and counts only its
-    /// false-to-true move within the level; a star restored from a save never counts. <see cref="GoalState"/>
-    /// decides, this class executes. Re-attaches when a context brings a different EventManager.
+    /// false-to-true move within the level. After a login it sends a star the save has, when the save's goal
+    /// state allows it. <see cref="GoalState"/> decides over <see cref="SaveStateStore.Current"/>, this class
+    /// executes. Re-attaches when a context brings a different EventManager.
     /// </summary>
     internal static class GoalWatcher
     {
@@ -71,39 +72,33 @@ namespace RailRouteArchipelago.Interception
             }
         }
 
-        /// <summary>After a login: sends a goal pending for this map, or points at Shift+F10 for a star from a save.</summary>
+        /// <summary>After a login that wasn't refused: sends the star the save has and hasn't sent.</summary>
         public static void OnLogin(ApSession session)
         {
-            var map = CurrentMap;
+            var state = SaveStateStore.Current;
             var granted = EndlessCompleteGranted(Ctx.Deps.ResearchController);
-            var decision = GoalState.OnLogin(map, !session.ChecksBlocked, session.GoalSupported, granted);
+            var decision = GoalState.OnLogin(state.Goal, session.Bound, !session.ChecksBlocked, session.GoalSupported, granted);
             if (decision.Send)
             {
-                Send(session, map, " (pending since offline)");
+                Send(session, state, " (from the save)");
                 return;
             }
-            if (decision.Refusal != GoalRefusal.NotPending && decision.Refusal != GoalRefusal.AlreadySent)
+            if (granted && decision.Refusal != GoalRefusal.AlreadySent)
             {
-                Log.Warn("Pending goal not sent: " + decision.Reason);
-            }
-            if (granted && !GoalState.Sent && !GoalState.IsPendingFor(map))
-            {
-                const string hint = "Endless-complete star found in the save; the goal isn't sent automatically. Press Shift+F10 to send it.";
-                Log.Info(hint);
-                Notify.Side(hint);
+                Log.Warn("Goal not sent: " + decision.Reason);
             }
         }
 
-        /// <summary>Hands the goal status to the socket. A failure makes the goal pending again for the map.</summary>
-        public static void Send(ApSession session, string map, string how)
+        /// <summary>Hands the goal status to the socket and marks the save's goal sent. A failure makes it pending again.</summary>
+        private static void Send(ApSession session, SaveApState state, string how)
         {
-            GoalState.MarkSent();
+            state.Goal = GoalState.MarkSent();
             session.SendPacket(new StatusUpdatePacket { Status = ArchipelagoClientState.ClientGoal }, "the goal", message =>
             {
-                GoalState.MarkFailed(map);
-                Log.Error("Sending the goal failed: " + message + ". It's sent after the next login on this map.");
+                state.Goal = GoalState.MarkFailed();
+                Log.Error("Sending the goal failed: " + message + ". It's sent after the next login.");
             });
-            Log.Info("Goal sent: Endless complete on " + map + how);
+            Log.Info("Goal sent: Endless complete on " + CurrentMap + how);
             Notify.Side("Archipelago goal complete");
         }
 
@@ -129,17 +124,18 @@ namespace RailRouteArchipelago.Interception
                 return;
             }
 
-            var map = CurrentMap;
+            var state = SaveStateStore.Current;
             var session = ArchipelagoPump.Session;
             var connected = session != null && session.IsConnected;
-            var decision = GoalState.OnReachedLive(map, connected, connected && !session.ChecksBlocked,
-                connected && session.GoalSupported);
+            var decision = GoalState.OnReachedLive(state.Goal, connected, connected && session.Bound,
+                connected && !session.ChecksBlocked, connected && session.GoalSupported);
             if (decision.Send)
             {
-                Send(session, map, "");
+                Send(session, state, "");
             }
             else
             {
+                state.Goal = decision.State;
                 Log.Warn("Goal reached, not sent: " + decision.Reason);
             }
         }

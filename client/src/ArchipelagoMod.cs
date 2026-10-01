@@ -34,7 +34,6 @@ namespace RailRouteArchipelago
             if (PatchManager.Applied && !keysInstalled)
             {
                 DebugReceiveKey.Install();
-                GoalSendKey.Install();
                 keysInstalled = true;
             }
             if (PatchManager.Applied)

@@ -7,6 +7,18 @@ using Game.Level;
 
 namespace RailRouteArchipelago.Interception
 {
+    internal enum ReceiveMode
+    {
+        /// <summary>Already in the level (below the save's received-item index): no side effects, no popup.</summary>
+        Restore,
+
+        /// <summary>New to the level, in the replay on connect: side effects, no popup.</summary>
+        NewSilent,
+
+        /// <summary>Side effects and the unlock popup.</summary>
+        Live,
+    }
+
     /// <summary>
     /// Receiving an upgrade item in split mode: counts it and applies the upgrade's side effects the way
     /// ResearchController.CompleteResearch does, without ever writing any slot's Researched flag.
@@ -16,12 +28,12 @@ namespace RailRouteArchipelago.Interception
     {
         /// <summary>
         /// Receives the item for <paramref name="upgrade"/>: that upgrade, or for a levelled one a copy of
-        /// its progressive item (the next level of its chain). <paramref name="silent"/> skips the unlock
-        /// popup only (for the replay on connect); side effects and the UI refresh still happen. When a non-silent
+        /// its progressive item (the next level of its chain). <paramref name="mode"/> picks what runs besides
+        /// counting it and the UI refresh: see <see cref="ReceiveMode"/>. When a <see cref="ReceiveMode.Live"/>
         /// receive can't show the popup (the system upgrades menu is open), a side notification names the upgrade
         /// and <paramref name="sender"/> instead.
         /// </summary>
-        public static void Receive(ResearchController.ResearchItem upgrade, bool silent = false, string sender = null)
+        public static void Receive(ResearchController.ResearchItem upgrade, ReceiveMode mode = ReceiveMode.Live, string sender = null)
         {
             if (!SplitFlags.Active)
             {
@@ -32,10 +44,13 @@ namespace RailRouteArchipelago.Interception
             var controller = (ResearchController)deps.ResearchController;
             var effectItem = EffectState.ResolveEffectItem(controller, upgrade);
             var count = EffectState.Received.Receive(EffectState.ItemKey(effectItem.Research));
-            ApplySideEffects(deps, effectItem.Research);
+            if (mode != ReceiveMode.Restore)
+            {
+                ApplySideEffects(deps, effectItem.Research);
+            }
 
             // Mirrors the tail of CompleteResearch.
-            if (!silent)
+            if (mode == ReceiveMode.Live)
             {
                 if (deps.CurrentMode == GameMode.Play && deps.GameController.Loaded && !deps.MenuController.SystemUpgradesShown)
                 {
@@ -47,7 +62,8 @@ namespace RailRouteArchipelago.Interception
                 }
             }
             EffectState.RaiseResearchCompleted(deps.EventManager, effectItem);
-            Log.Info("Item received: " + effectItem.Id + " (" + UpgradeInterception.DisplayName(effectItem) + "), count " + count);
+            Log.Info("Item received: " + effectItem.Id + " (" + UpgradeInterception.DisplayName(effectItem) + "), count " + count
+                + (mode == ReceiveMode.Restore ? ", restored without side effects" : ""));
         }
 
         /// <summary>Mirrors CompleteResearch's side-effect switch (re-check after game updates, see FINDINGS.md).</summary>

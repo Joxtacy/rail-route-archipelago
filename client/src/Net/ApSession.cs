@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Archipelago.MultiClient.Net;
 using Archipelago.MultiClient.Net.Enums;
 using Archipelago.MultiClient.Net.Packets;
+using Game.Context;
 using RailRouteArchipelago.Core;
 using RailRouteArchipelago.Interception;
 
@@ -53,6 +54,12 @@ namespace RailRouteArchipelago.Net
 
         /// <summary>The slot was generated for another map, so no checks are sent on this connection.</summary>
         public bool ChecksBlocked { get; private set; }
+
+        /// <summary>The loaded level is bound to this session's seed and slot (it matched or bound at login).</summary>
+        public bool Bound { get; private set; }
+
+        /// <summary>Checks may be sent: the map matches and the level is bound to this slot.</summary>
+        public bool ChecksAllowed => !ChecksBlocked && Bound;
 
         /// <summary>The slot data's goal is one the client reports (<see cref="GoalState.IsSupportedGoal"/>).</summary>
         public bool GoalSupported { get; private set; }
@@ -159,8 +166,41 @@ namespace RailRouteArchipelago.Net
             Log.Info("Connected to " + Description + " (team " + success.Team + ", slot " + success.Slot + ")");
             Notify.Side("Archipelago connected");
             ChecksBlocked = SlotDataCheck.Run(success.SlotData);
-            CheckSender.ResendAll(this);
             ReadGoal(success.SlotData);
+
+            var state = SaveStateStore.Current;
+            var loggedIn = new SeedBinding(session.RoomState.Seed, session.ConnectionInfo.Team, session.ConnectionInfo.Slot, slot);
+            var decision = BindingDecision.Decide(state, loggedIn, !ChecksBlocked);
+            switch (decision.Outcome)
+            {
+                case BindingOutcome.Refuse:
+                    Log.Warn("Save refused: " + decision.Reason + " (this save: " + state.Describe() + "; server: " + loggedIn.Key + ")");
+                    Notify.Side("This save belongs to another Archipelago seed – disconnected");
+                    Items.Drop();
+                    Disconnect();
+                    return;
+                case BindingOutcome.Bind:
+                    state.Binding = loggedIn;
+                    state.Goal = GoalState.OnBind(state.Goal, GoalWatcher.EndlessCompleteGranted(Ctx.Deps.ResearchController));
+                    Bound = true;
+                    Log.Info("Save bound to " + loggedIn.Seed + ", slot " + loggedIn.SlotName + " (" + loggedIn.Slot + ")");
+                    break;
+                case BindingOutcome.Matches:
+                    Bound = true;
+                    break;
+                case BindingOutcome.Skip:
+                    Log.Warn("Save not bound: the level's map doesn't match the seed");
+                    break;
+            }
+
+            CheckSender.ResendAll(this);
+            var loadedSave = Ctx.Deps.GameController.LoadedSave;
+            if (decision.Outcome == BindingOutcome.Bind && loadedSave != null)
+            {
+                // Before the held items raise the index: the loaded file's game state hasn't changed.
+                SaveStateStore.WriteFor(loadedSave.FileName);
+            }
+            Items.Begin(state.ReceivedIndex);
             GoalWatcher.OnLogin(this);
         }
 

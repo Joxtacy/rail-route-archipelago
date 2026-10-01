@@ -58,6 +58,7 @@ namespace RailRouteArchipelago.Net
         {
             handledLevel = level;
             LevelDiagnostics.Log(deps);
+            SaveStateStore.LoadFor(level, deps.GameController.LoadedSave);
             GoalWatcher.OnLevelLoaded(level);
             var settings = UpgradeInterception.Settings;
             if (!settings.HasConnection)

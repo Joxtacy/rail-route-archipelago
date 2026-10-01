@@ -28,11 +28,20 @@ namespace RailRouteArchipelago.Core
         /// </summary>
         public int Known { get; private set; }
 
+        private int? seeded;
+
+        /// <summary>
+        /// The number of the slot's items that already took effect before this connection (the save's
+        /// received-item index). The next <see cref="ItemSyncAction.Replace"/> takes it as <see cref="Known"/>.
+        /// </summary>
+        public void Seed(int index) => seeded = index;
+
         public ItemSyncAction Accept(int index, int count)
         {
             if (index == 0)
             {
-                Known = System.Math.Min(Expected, count);
+                Known = System.Math.Min(seeded ?? Expected, count);
+                seeded = null;
                 Expected = count;
                 return ItemSyncAction.Replace;
             }
@@ -48,6 +57,7 @@ namespace RailRouteArchipelago.Core
         {
             Expected = 0;
             Known = 0;
+            seeded = null;
         }
     }
 }

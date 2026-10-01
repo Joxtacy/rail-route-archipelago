@@ -9,108 +9,90 @@ namespace RailRouteArchipelago.Core
         UnsupportedGoal,
         LevelNotGranted,
         AlreadySent,
-        NotPending,
+        PredatesBinding,
+        ForeignSave,
     }
 
-    /// <summary>What to do with the goal: send it now, or refuse with a reason for the log.</summary>
+    /// <summary>What to do with the goal: send it now, or refuse with a reason for the log, plus the save's goal state to keep.</summary>
     public readonly struct GoalDecision
     {
-        private GoalDecision(GoalRefusal refusal) => Refusal = refusal;
-
-        public static GoalDecision SendNow => new GoalDecision(GoalRefusal.None);
+        private GoalDecision(GoalRefusal refusal, GoalStatus state)
+        {
+            Refusal = refusal;
+            State = state;
+        }
 
         public GoalRefusal Refusal { get; }
+
+        /// <summary>The save's goal state after the decision. A send leaves it as it was until <see cref="GoalState.MarkSent"/>.</summary>
+        public GoalStatus State { get; }
 
         public bool Send => Refusal == GoalRefusal.None;
 
         public string Reason => GoalState.ReasonText(Refusal);
 
-        public static GoalDecision Refuse(GoalRefusal refusal) => new GoalDecision(refusal);
+        public static GoalDecision SendNow(GoalStatus state) => new GoalDecision(GoalRefusal.None, state);
+
+        public static GoalDecision Refuse(GoalRefusal refusal, GoalStatus state) => new GoalDecision(refusal, state);
     }
 
     /// <summary>
-    /// Whether the Archipelago goal is sent, for the game run. A goal reached live while offline stays
-    /// pending for its map until the next login on that map (or until the game quits); once sent, it is
-    /// never sent again. A star found only in a save isn't "reached live": only the manual entry point
-    /// sends that. Never persisted.
+    /// The goal decisions over one save's <see cref="GoalStatus"/>. A star the level had when it was bound is
+    /// ineligible for good. A star earned live is sent, or stays pending in the save until a login on a save
+    /// of that level bound to the seed. Once sent, it is never sent again from that save.
     /// </summary>
     public static class GoalState
     {
         public const string SupportedGoal = "endless_complete";
 
-        /// <summary>The map UUID a goal is pending for, or null.</summary>
-        public static string PendingMap { get; private set; }
-
-        public static bool Sent { get; private set; }
-
         public static bool IsSupportedGoal(string goal) => goal == SupportedGoal;
 
-        public static bool IsPendingFor(string map) => PendingMap != null && PendingMap == map;
+        /// <summary>The level binds to a seed: a star it already has predates the binding.</summary>
+        public static GoalStatus OnBind(GoalStatus state, bool granted) => granted ? GoalStatus.Ineligible : state;
+
+        /// <summary>After a login on a level that isn't refused: sends a star the save has and hasn't sent.</summary>
+        public static GoalDecision OnLogin(GoalStatus state, bool bound, bool mapMatches, bool goalSupported, bool granted)
+        {
+            if (state == GoalStatus.Sent)
+            {
+                return GoalDecision.Refuse(GoalRefusal.AlreadySent, state);
+            }
+            if (state == GoalStatus.Ineligible)
+            {
+                return GoalDecision.Refuse(GoalRefusal.PredatesBinding, state);
+            }
+            if (!granted)
+            {
+                return GoalDecision.Refuse(GoalRefusal.LevelNotGranted, state);
+            }
+            return Check(state, bound, mapMatches, goalSupported);
+        }
 
         /// <summary>
-        /// The star was awarded during play. Sends when connected to a matching slot with a supported
-        /// goal; while offline the goal stays pending for <paramref name="map"/>.
+        /// The star was awarded during play. Sends when connected to a matching slot the save is bound to;
+        /// while offline the goal becomes pending in the save.
         /// </summary>
-        public static GoalDecision OnReachedLive(string map, bool connected, bool mapMatches, bool goalSupported)
+        public static GoalDecision OnReachedLive(GoalStatus state, bool connected, bool bound, bool mapMatches, bool goalSupported)
         {
-            if (Sent)
+            if (state == GoalStatus.Sent)
             {
-                return GoalDecision.Refuse(GoalRefusal.AlreadySent);
+                return GoalDecision.Refuse(GoalRefusal.AlreadySent, state);
+            }
+            if (state == GoalStatus.Ineligible)
+            {
+                return GoalDecision.Refuse(GoalRefusal.PredatesBinding, state);
             }
             if (!connected)
             {
-                PendingMap = map;
-                return GoalDecision.Refuse(GoalRefusal.NotConnected);
+                return GoalDecision.Refuse(GoalRefusal.NotConnected, GoalStatus.Pending);
             }
-            return Check(mapMatches, goalSupported, levelGranted: true);
+            return Check(state, bound, mapMatches, goalSupported);
         }
 
-        /// <summary>After a login: sends only a goal pending for this map, and leaves another map's alone.</summary>
-        public static GoalDecision OnLogin(string map, bool mapMatches, bool goalSupported, bool levelGranted)
-        {
-            if (Sent)
-            {
-                return GoalDecision.Refuse(GoalRefusal.AlreadySent);
-            }
-            if (!IsPendingFor(map))
-            {
-                return GoalDecision.Refuse(GoalRefusal.NotPending);
-            }
-            return Check(mapMatches, goalSupported, levelGranted);
-        }
+        public static GoalStatus MarkSent() => GoalStatus.Sent;
 
-        /// <summary>The player asked to send the goal. Skips only the "reached live" guard.</summary>
-        public static GoalDecision OnManual(string map, bool connected, bool mapMatches, bool goalSupported, bool levelGranted)
-        {
-            if (Sent)
-            {
-                return GoalDecision.Refuse(GoalRefusal.AlreadySent);
-            }
-            if (!connected)
-            {
-                return GoalDecision.Refuse(GoalRefusal.NotConnected);
-            }
-            return Check(mapMatches, goalSupported, levelGranted);
-        }
-
-        public static void MarkSent()
-        {
-            Sent = true;
-            PendingMap = null;
-        }
-
-        /// <summary>Sending failed: the goal is pending again for <paramref name="map"/>.</summary>
-        public static void MarkFailed(string map)
-        {
-            Sent = false;
-            PendingMap = map;
-        }
-
-        public static void Reset()
-        {
-            Sent = false;
-            PendingMap = null;
-        }
+        /// <summary>Sending failed: the goal is pending again.</summary>
+        public static GoalStatus MarkFailed() => GoalStatus.Pending;
 
         public static string ReasonText(GoalRefusal refusal)
         {
@@ -121,27 +103,28 @@ namespace RailRouteArchipelago.Core
                 case GoalRefusal.MapMismatch: return "the level's map doesn't match the seed";
                 case GoalRefusal.UnsupportedGoal: return "the slot's goal isn't " + SupportedGoal;
                 case GoalRefusal.LevelNotGranted: return "the level hasn't earned the Endless-complete star";
-                case GoalRefusal.AlreadySent: return "the goal was already sent in this game run";
-                case GoalRefusal.NotPending: return "no goal is pending for this map";
+                case GoalRefusal.AlreadySent: return "the goal was already sent from this save";
+                case GoalRefusal.PredatesBinding: return "the star predates the binding";
+                case GoalRefusal.ForeignSave: return "the save is bound to another seed";
                 default: return refusal.ToString();
             }
         }
 
-        private static GoalDecision Check(bool mapMatches, bool goalSupported, bool levelGranted)
+        private static GoalDecision Check(GoalStatus state, bool bound, bool mapMatches, bool goalSupported)
         {
             if (!mapMatches)
             {
-                return GoalDecision.Refuse(GoalRefusal.MapMismatch);
+                return GoalDecision.Refuse(GoalRefusal.MapMismatch, state);
             }
             if (!goalSupported)
             {
-                return GoalDecision.Refuse(GoalRefusal.UnsupportedGoal);
+                return GoalDecision.Refuse(GoalRefusal.UnsupportedGoal, state);
             }
-            if (!levelGranted)
+            if (!bound)
             {
-                return GoalDecision.Refuse(GoalRefusal.LevelNotGranted);
+                return GoalDecision.Refuse(GoalRefusal.ForeignSave, state);
             }
-            return GoalDecision.SendNow;
+            return GoalDecision.SendNow(state);
         }
     }
 }
