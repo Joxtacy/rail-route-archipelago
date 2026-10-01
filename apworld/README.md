@@ -11,10 +11,13 @@ git clone https://github.com/ArchipelagoMW/Archipelago.git ~/PrivateProjects/Arc
 cd ~/PrivateProjects/Archipelago
 git checkout 0.6.7
 ln -s <this repo>/apworld/rail_route worlds/rail_route
-python3.13 -m venv .venv
+uv venv --python 3.13 --seed .venv
 .venv/bin/python ModuleUpdate.py -y
-.venv/bin/python -m pip install pytest
+uv pip install --python .venv/bin/python pytest
 ```
+
+uv manages its own Python 3.13, so a Homebrew upgrade that removes `python@3.13` can't break the venv. `--seed` adds pip,
+which `ModuleUpdate.py` calls to install the requirements of Archipelago and every world.
 
 Check that Archipelago picks up the world:
 
