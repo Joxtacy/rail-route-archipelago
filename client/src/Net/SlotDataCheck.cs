@@ -36,7 +36,7 @@ namespace RailRouteArchipelago.Net
 
             if (mismatches > 0)
             {
-                Notify.Side("This level doesn't match the Archipelago seed" + (mapMismatch ? " – checks are not sent" : ""));
+                Notify.Sticky("This level doesn't match the Archipelago seed" + (mapMismatch ? " – checks are not sent" : ""));
             }
             return mapMismatch;
         }

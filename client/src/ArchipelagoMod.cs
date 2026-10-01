@@ -97,10 +97,7 @@ namespace RailRouteArchipelago
             Log.Info("Level started: " + level.LevelDefinition.Uuid);
             if (PatchManager.Degraded)
             {
-                deps.NotificationController.CreateSideNotification()
-                    .Text("Archipelago mod is running degraded: patching failed, Archipelago features are unavailable. See Player.log.")
-                    .CanBeDismissed()
-                    .NotSaved();
+                Notify.Sticky("Archipelago mod is running degraded: patching failed, Archipelago features are unavailable. See Player.log.");
             }
         }
     }

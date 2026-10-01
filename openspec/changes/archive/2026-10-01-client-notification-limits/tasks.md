@@ -2,7 +2,7 @@
 
 ## 1. Settings
 
-- [ ] 1.1 Add `notificationSeconds` and `notificationLimit` to `ModSettings` (D5):
+- [x] 1.1 Add `notificationSeconds` and `notificationLimit` to `ModSettings` (D5):
   - nullable int properties
   - `DefaultNotificationSeconds = 10` and `DefaultNotificationLimit = 5`
   - `NotificationSecondsOrDefault` and `NotificationLimitOrDefault`, which map null and negative values to the default and keep 0
@@ -20,7 +20,7 @@
 
 ## 2. Limit logic
 
-- [ ] 2.1 Add `client/src/Core/NotificationBudget.cs` (D3): a generic `NotificationBudget<T>` built with an `isGone` predicate. `Add(item, sticky, limit)` prunes gone entries, appends the item, and while `limit > 0`, the count is over the limit and a non-sticky entry exists, removes the oldest non-sticky entry and returns it. Add `Count` and `Clear()` for tests.
+- [x] 2.1 Add `client/src/Core/NotificationBudget.cs` (D3): a generic `NotificationBudget<T>` built with an `isGone` predicate. `Add(item, sticky, limit)` prunes gone entries, appends the item, and while `limit > 0`, the count is over the limit and a non-sticky entry exists, removes the oldest non-sticky entry and returns it. Add `Count` and `Clear()` for tests.
 
   Add `client.Tests/NotificationBudgetTests.cs`:
   - under the limit → nothing evicted
@@ -35,8 +35,8 @@
 
 ## 3. Wiring
 
-- [ ] 3.1 Rework `client/src/Notify.cs` (D1, D2, D4). `Side(text)` makes an expiring notification and the new `Sticky(text)` a sticky one. Both create it with `.Text(text).CanBeDismissed().NotSaved()`. For an expiring one with `NotificationSecondsOrDefault > 0`, call `Dismiss(seconds, playSuccessSound: false)`. Pass the notification to a static `NotificationBudget<Notification>` (`isGone = n => n.Destroyed || n.ToDestroy`) with `NotificationLimitOrDefault`, and set `Destroyed = true` on every evicted one. Comment the `Dismiss` call: the mod sets no `DoneStatusText`. Verify with `cd client && dotnet build -c Release -p:DeployMod=false` (0 warnings).
-- [ ] 3.2 Switch the sticky messages to `Notify.Sticky`:
+- [x] 3.1 Rework `client/src/Notify.cs` (D1, D2, D4). `Side(text)` makes an expiring notification and the new `Sticky(text)` a sticky one. Both create it with `.Text(text).CanBeDismissed().NotSaved()`. For an expiring one with `NotificationSecondsOrDefault > 0`, call `Dismiss(seconds, playSuccessSound: false)`. Pass the notification to a static `NotificationBudget<Notification>` (`isGone = n => n.Destroyed`; `ToDestroy` is set from the first frame of a delayed dismiss, so it must not count as gone) with `NotificationLimitOrDefault`, and set `Destroyed = true` on every evicted one. Comment the `Dismiss` call: the mod sets no `DoneStatusText`. Verify with `cd client && dotnet build -c Release -p:DeployMod=false` (0 warnings).
+- [x] 3.2 Switch the sticky messages to `Notify.Sticky`:
   - `ApSession`: seed mismatch, connection failed, disconnected
   - `SlotDataCheck`: level mismatch
   - `GoalWatcher`: goal complete
@@ -46,8 +46,8 @@
 
 ## 4. In-game test round (one batch, macOS via Steam)
 
-- [ ] 4.1 Prepare a Haarlem seed and a local server as in earlier test rounds (a scratch `Players/player.yaml`, `Generate.py`, `MultiServer.py` on port 38281). Settings: `{"interceptUpgradePurchases": true, "server": "localhost:38281", "slot": "Player"}`. Deploy with `cd client && dotnet build -c Release`. Verify that the server console shows the room hosted and that the settings log line shows `notifications 10s, limit 5`.
-- [ ] 4.2 Run the test round. The user clicks through each step, and every step is then confirmed against `Player.log`:
+- [x] 4.1 Prepare a Haarlem seed and a local server as in earlier test rounds (a scratch `Players/player.yaml`, `Generate.py`, `MultiServer.py` on port 38281). Settings: `{"interceptUpgradePurchases": true, "server": "localhost:38281", "slot": "Player"}`. Deploy with `cd client && dotnet build -c Release`. Verify that the server console shows the room hosted and that the settings log line shows `notifications 10s, limit 5`.
+- [x] 4.2 Run the test round. The user clicks through each step, and every step is then confirmed against `Player.log`:
   1. **Expiry.** Load a fresh Haarlem game and connect. "Archipelago connected" and the restore line disappear by themselves after about 10 seconds.
   2. **Paused.** Pause the game, buy a slot in the upgrades menu: "Check sent" and "Received … from Player" still disappear after about 10 seconds.
   3. **Limit.** Buy four slots quickly in the upgrades menu (eight notifications): no more than five are on screen at once, and the oldest go first.
@@ -58,4 +58,4 @@
 
 ## 5. Roadmap
 
-- [ ] 5.1 Update `ROADMAP.md`: add `client-notification-limits` to the M5 row's changes, add a ✅ line for notification expiry and the limit in the M5 notes, and add the follow-up "combine a burst of Received notifications into one line". Verify that `openspec validate client-notification-limits --strict` passes.
+- [x] 5.1 Update `ROADMAP.md`: add `client-notification-limits` to the M5 row's changes, add a ✅ line for notification expiry and the limit in the M5 notes, and add the follow-up "combine a burst of Received notifications into one line". Verify that `openspec validate client-notification-limits --strict` passes.

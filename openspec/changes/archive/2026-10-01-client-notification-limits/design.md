@@ -7,7 +7,7 @@ See proposal.md for motivation. The requirements are in `specs/client/notificati
 **Game facts** (decompiled Rail Route 3.0.18 `Game.Hud.Notification`, read 2026-10-01):
 - `NotificationController.CreateSideNotification()` creates a `Notification`, queues it in `ToDisplayInSidePosition` and adds it to an unbounded list. Nothing limits that list or expires its entries. `Update` drops entries that are `ToDestroy` or `Destroyed`.
 - `NotificationSidePanel.Update` takes everything off the queue each frame and creates a `NotificationItem` for each, skipping any that is already `Destroyed`.
-- `NotificationItem.Update` runs every frame. It calls `Clear()` (destroys the GameObject and sets `Destroyed`) when `Notification.Destroyed` is set. When `ToDismissWithDelay` is set, it marks `ToDestroy` and calls `Invoke("Dismiss", DismissSeconds)`. The player's X button calls `Dismiss()` → `Clear()` too.
+- `NotificationItem.Update` runs every frame. It calls `Clear()` (destroys the GameObject and sets `Destroyed`) when `Notification.Destroyed` is set. When `ToDismissWithDelay` is set, it marks `ToDestroy` on the first frame and calls `Invoke("Dismiss", DismissSeconds)`, so `ToDestroy` means "countdown running", not "about to disappear". The player's X button calls `Dismiss()` → `Clear()` too.
 - `Notification.Dismiss(int seconds = 2, bool playSuccessSound = true)` sets `ToDismissWithDelay`, `DismissSeconds` and `PlaySuccessSound`, and replaces `StatusText` with `DoneStatusText` when one is set. The mod sets neither status text. The game uses `Dismiss(0)` for subtitles.
 - `NotificationController.Clear()` (on a level change) sets `Destroyed` on every notification.
 - Nothing else in `RailRoute.dll` creates side notifications. Side notifications loaded from a save are only those the game saved, and the mod's are all `NotSaved()`.
@@ -51,7 +51,7 @@ See proposal.md for motivation. The requirements are in `specs/client/notificati
         remove the oldest non-sticky entry and return it for eviction
 ```
 
-- `isGone` is passed to the constructor. `Notify` passes `n => n.Destroyed || n.ToDestroy`, and the tests pass a fake.
+- `isGone` is passed to the constructor. `Notify` passes `n => n.Destroyed`, and the tests pass a fake. `ToDestroy` must not count as gone: an expiring notification has it from its first frame on screen (found in the test round, where including it disabled the limit).
 - It's pruned when a notification is added rather than every frame, because the count only matters at that point.
 - A newly added routine notification can be evicted straight away, but only when every other entry is sticky and the count is over the limit. The rule doesn't need a special case for that, since the oldest routine entry is then the new one.
 - *Alternative: evict sticky ones too once the limit is reached.* The warnings are the messages the change is meant to keep visible. Rejected, as agreed.
@@ -75,7 +75,7 @@ See proposal.md for motivation. The requirements are in `specs/client/notificati
 
 - [A future game version scales time when paused] → `Invoke` delays would stop while paused. Notifications would then just last longer, which does no harm. The `timeScale` check goes into FINDINGS.md so it's rechecked after game updates.
 - [`Dismiss` with a `DoneStatusText` would change the status line] → The mod never sets one. D1 is documented next to the call.
-- [The game's `Update` drops `ToDestroy` entries from its own list a few seconds before the item disappears] → The budget prunes on `ToDestroy` too, so a notification on its way out doesn't count. It's gone moments later anyway.
+- [An expiring notification is `ToDestroy` for its whole time on screen] → The budget prunes on `Destroyed` only, so expiring notifications keep counting until they're actually gone.
 - [With many sticky warnings the panel goes over the limit] → That's intended (see spec). Only a broken setup produces several of them.
 
 ## Migration Plan

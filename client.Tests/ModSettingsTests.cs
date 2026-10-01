@@ -169,5 +169,68 @@ namespace RailRouteArchipelago.Tests
             Assert.DoesNotContain("threshold", new ModSettings().ToString());
             Assert.Contains("debug endless-complete threshold 3", new ModSettings { DebugEndlessCompleteThreshold = 3 }.ToString());
         }
+
+        [Fact]
+        public void NotificationKeysAbsent_Defaults()
+        {
+            File.WriteAllText(SettingsPath, "{\"interceptUpgradePurchases\": true}");
+
+            Assert.True(ModSettings.TryLoad(SettingsPath, out var settings, out _));
+            Assert.Equal(10, settings.NotificationSecondsOrDefault);
+            Assert.Equal(5, settings.NotificationLimitOrDefault);
+        }
+
+        [Fact]
+        public void NotificationValues_Load()
+        {
+            File.WriteAllText(SettingsPath, "{\"notificationSeconds\": 4, \"notificationLimit\": 3}");
+
+            Assert.True(ModSettings.TryLoad(SettingsPath, out var settings, out var error));
+            Assert.Null(error);
+            Assert.Equal(4, settings.NotificationSecondsOrDefault);
+            Assert.Equal(3, settings.NotificationLimitOrDefault);
+        }
+
+        [Fact]
+        public void NotificationZero_KeptAndShownAsOff()
+        {
+            File.WriteAllText(SettingsPath, "{\"notificationSeconds\": 0, \"notificationLimit\": 0}");
+
+            Assert.True(ModSettings.TryLoad(SettingsPath, out var settings, out _));
+            Assert.Equal(0, settings.NotificationSecondsOrDefault);
+            Assert.Equal(0, settings.NotificationLimitOrDefault);
+            Assert.Contains("notifications off, limit off", settings.ToString());
+        }
+
+        [Theory]
+        [InlineData("{\"notificationSeconds\": -1, \"notificationLimit\": -1}")]
+        [InlineData("{\"notificationSeconds\": null, \"notificationLimit\": null}")]
+        public void NotificationNegativeOrNull_Defaults(string json)
+        {
+            File.WriteAllText(SettingsPath, json);
+
+            Assert.True(ModSettings.TryLoad(SettingsPath, out var settings, out _));
+            Assert.Equal(10, settings.NotificationSecondsOrDefault);
+            Assert.Equal(5, settings.NotificationLimitOrDefault);
+        }
+
+        [Fact]
+        public void NotificationNotANumber_Error_Defaults()
+        {
+            File.WriteAllText(SettingsPath, "{\"interceptUpgradePurchases\": true, \"notificationSeconds\": \"ten\"}");
+
+            Assert.False(ModSettings.TryLoad(SettingsPath, out var settings, out var error));
+            Assert.NotNull(error);
+            Assert.False(settings.InterceptUpgradePurchases);
+            Assert.Equal(10, settings.NotificationSecondsOrDefault);
+            Assert.Equal(5, settings.NotificationLimitOrDefault);
+        }
+
+        [Fact]
+        public void LogText_ContainsNotificationValues()
+        {
+            Assert.Contains("notifications 10s, limit 5", new ModSettings().ToString());
+            Assert.Contains("notifications 4s, limit 3", new ModSettings { NotificationSeconds = 4, NotificationLimit = 3 }.ToString());
+        }
     }
 }

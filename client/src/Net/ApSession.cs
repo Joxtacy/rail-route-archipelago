@@ -175,7 +175,7 @@ namespace RailRouteArchipelago.Net
             {
                 case BindingOutcome.Refuse:
                     Log.Warn("Save refused: " + decision.Reason + " (this save: " + state.Describe() + "; server: " + loggedIn.Key + ")");
-                    Notify.Side("This save belongs to another Archipelago seed – disconnected");
+                    Notify.Sticky("This save belongs to another Archipelago seed – disconnected");
                     Items.Drop();
                     Disconnect();
                     return;
@@ -223,7 +223,7 @@ namespace RailRouteArchipelago.Net
             {
                 Log.Error("  " + error);
             }
-            Notify.Side("Archipelago connection failed – see Player.log");
+            Notify.Sticky("Archipelago connection failed – see Player.log");
             Disconnect();
         }
 
@@ -261,7 +261,7 @@ namespace RailRouteArchipelago.Net
             }
             IsConnected = false;
             Log.Warn("Archipelago disconnected from " + Description + (string.IsNullOrEmpty(reason) ? "" : ": " + reason));
-            Notify.Side("Archipelago disconnected");
+            Notify.Sticky("Archipelago disconnected");
         }
     }
 }

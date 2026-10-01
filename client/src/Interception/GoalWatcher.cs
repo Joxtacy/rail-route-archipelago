@@ -99,7 +99,7 @@ namespace RailRouteArchipelago.Interception
                 Log.Error("Sending the goal failed: " + message + ". It's sent after the next login.");
             });
             Log.Info("Goal sent: Endless complete on " + CurrentMap + how);
-            Notify.Side("Archipelago goal complete");
+            Notify.Sticky("Archipelago goal complete");
         }
 
         public static string CurrentMap => Ctx.Deps?.LevelController?.CurrentLevel?.LevelDefinition?.Uuid;

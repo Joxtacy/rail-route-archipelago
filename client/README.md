@@ -91,9 +91,12 @@ For a room on archipelago.gg, use the address and port the room page shows, and 
 | `server` | none | The Archipelago server: `host:port`, a bare `host` (port 38281), or a `ws://`/`wss://` URI. An invalid address is logged and treated as none. |
 | `slot` | none | Your slot (player) name in the seed. |
 | `password` | none | The room password, if it has one. It's only sent to the server and never written to the log. |
+| `notificationSeconds` | `10` | Seconds before a routine side notification clears itself. It counts real time, so it keeps running while the game is paused. `0`: notifications stay until you dismiss them. Warnings and the goal are always sticky (see "Notifications" below). |
+| `notificationLimit` | `5` | The most mod notifications on screen at once. A new one past the limit removes the oldest routine ones. Sticky ones are never removed, so several warnings can go over the limit. `0`: no limit. |
 | `debugEndlessCompleteThreshold` | none | **Test only.** A positive number lowers the Endless-complete star's threshold on a level that hasn't earned the star yet (`Debug: endless-complete threshold set to <n>` in the log), so a test round can reach the goal quickly. The game saves the lowered threshold with the level, so use it only on throwaway saves. |
 
-The file is read once at game start. A missing file, or an invalid file or value, means off; invalid files are logged as a warning.
+The file is read once at game start. A missing file, or an invalid file or value, means the defaults; invalid files are logged as a warning.
+A missing, null or negative `notificationSeconds` or `notificationLimit` means its default.
 Without `server` and `slot` the mod stays offline: purchases are recorded in the log only, and F9 still works.
 
 With intercept mode on, in an Endless level:
@@ -109,17 +112,19 @@ game, a saved map or a restart) and disconnects when you leave the level or load
 loaded level and doesn't retry: after a failure or a lost connection, reload the save to try again. The level stays
 playable offline, with purchases recorded and only the items already received in effect.
 
-Notifications:
+Notifications. Routine ones, including "Check sent" and "Received" (described below), clear themselves after
+`notificationSeconds`. Warnings and the goal stay until you dismiss them, and the limit never removes them; the
+"running degraded" notification (see "Checking that it works") is sticky too.
 
-| Notification | Meaning |
-|---|---|
-| Archipelago connected | Logged in to the slot. |
-| Archipelago connection failed – see Player.log | The server couldn't be reached or refused the login. The log lists the reasons. |
-| Archipelago disconnected | The connection dropped during play. Received items keep working until you leave the level. |
-| This level doesn't match the Archipelago seed | The slot was generated for another map, or with other Expect Delays / Happy Passengers settings. The log names each difference. The mod stays connected and still applies items. On another map it adds "– checks are not sent" and sends no checks for that connection, so a save from another map can't check this seed's locations. |
-| This save belongs to another Archipelago seed – disconnected | The loaded save is bound to another seed or slot, or its state file can't be read (see "Save state" below). The mod sent nothing, applied no items and disconnected. |
-| Restored *n* Archipelago items, *m* new | The server resent the slot's items after connecting. *n* were already in the save, *m* arrived since it was written (", *m* new" is left out when there are none). |
-| Archipelago goal complete | The goal was sent to the server (see "Goal" below). |
+| Notification | Meaning | Until dismissed |
+|---|---|---|
+| Archipelago connected | Logged in to the slot. | no |
+| Archipelago connection failed – see Player.log | The server couldn't be reached or refused the login. The log lists the reasons. | yes |
+| Archipelago disconnected | The connection dropped during play. Received items keep working until you leave the level. | yes |
+| This level doesn't match the Archipelago seed | The slot was generated for another map, or with other Expect Delays / Happy Passengers settings. The log names each difference. The mod stays connected and still applies items. On another map it adds "– checks are not sent" and sends no checks for that connection, so a save from another map can't check this seed's locations. | yes |
+| This save belongs to another Archipelago seed – disconnected | The loaded save is bound to another seed or slot, or its state file can't be read (see "Save state" below). The mod sent nothing, applied no items and disconnected. | yes |
+| Restored *n* Archipelago items, *m* new | The server resent the slot's items after connecting. *n* were already in the save, *m* arrived since it was written (", *m* new" is left out when there are none). | no |
+| Archipelago goal complete | The goal was sent to the server (see "Goal" below). | yes |
 
 **Sending checks.** Buying a slot while connected sends its location to the server at once (`Check sent: <name> (<id>)`
 in the log). After every login the mod sends every bought slot again in one batch (`Resent <n> checks`), which covers

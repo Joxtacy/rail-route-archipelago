@@ -11,6 +11,8 @@ namespace RailRouteArchipelago.Core
     public sealed class ModSettings
     {
         public const string FileName = "RailRouteArchipelago.settings.json";
+        public const int DefaultNotificationSeconds = 10;
+        public const int DefaultNotificationLimit = 5;
 
         [JsonProperty("interceptUpgradePurchases")]
         public bool InterceptUpgradePurchases { get; set; }
@@ -33,6 +35,20 @@ namespace RailRouteArchipelago.Core
         [JsonProperty("debugEndlessCompleteThreshold")]
         public int? DebugEndlessCompleteThreshold { get; set; }
 
+        /// <summary>Seconds before a routine notification expires; 0 turns expiry off. See <see cref="NotificationSecondsOrDefault"/>.</summary>
+        [JsonProperty("notificationSeconds")]
+        public int? NotificationSeconds { get; set; }
+
+        /// <summary>Most mod notifications on screen; 0 turns the limit off. See <see cref="NotificationLimitOrDefault"/>.</summary>
+        [JsonProperty("notificationLimit")]
+        public int? NotificationLimit { get; set; }
+
+        /// <summary>The expiry in seconds, with a missing or negative value meaning the default. 0 means no expiry.</summary>
+        public int NotificationSecondsOrDefault => OrDefault(NotificationSeconds, DefaultNotificationSeconds);
+
+        /// <summary>The notification limit, with a missing or negative value meaning the default. 0 means no limit.</summary>
+        public int NotificationLimitOrDefault => OrDefault(NotificationLimit, DefaultNotificationLimit);
+
         /// <summary>Both a server and a slot are set (the address may still be invalid).</summary>
         public bool HasConnection => !string.IsNullOrWhiteSpace(Server) && !string.IsNullOrWhiteSpace(Slot);
 
@@ -45,7 +61,11 @@ namespace RailRouteArchipelago.Core
             + ", server " + (string.IsNullOrWhiteSpace(Server) ? "none" : Server.Trim())
             + ", slot " + (string.IsNullOrWhiteSpace(Slot) ? "none" : Slot)
             + ", password " + (PasswordOrNull == null ? "none" : "set")
+            + ", notifications " + (NotificationSecondsOrDefault == 0 ? "off" : NotificationSecondsOrDefault + "s")
+            + ", limit " + (NotificationLimitOrDefault == 0 ? "off" : NotificationLimitOrDefault.ToString())
             + (DebugEndlessCompleteThreshold.HasValue ? ", debug endless-complete threshold " + DebugEndlessCompleteThreshold.Value : "");
+
+        private static int OrDefault(int? value, int fallback) => value.HasValue && value.Value >= 0 ? value.Value : fallback;
 
         /// <summary>
         /// Loads settings from <paramref name="path"/>. Returns false (with defaults and an error message)

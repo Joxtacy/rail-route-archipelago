@@ -235,3 +235,24 @@ Local 0.6.7 server with two Haarlem seeds: A (`59949805810900081020`, room passw
 - **Corrupt sidecar (B).** Invalid JSON logged the file path with `can't be read: invalid JSON …`, then `Save refused: state file unreadable` and a disconnect. The file stayed unchanged, and the next manual save's sidecar has `unknownBinding: true`.
 - **Delete, prune and rename.** Deleting a save in the main menu deleted its sidecar. Pruning an autosave past five deleted its sidecar (`Save state deleted with …`). Renaming is reachable from the main menu's save list: the sidecar moved to the new file name and loaded with the same state.
 - Every login logged a `connection rejected (400 Bad Request)` on the server just before the successful connection, as in earlier rounds. It didn't affect the login.
+
+## Side notifications (2026-10-01, change client-notification-limits)
+
+Read from the decompiled 3.0.18 `Game.Hud.Notification`. The client's settings and sticky list are in `client/README.md`.
+
+- **No limit, no expiry.** `NotificationController.CreateSideNotification()` creates a `Notification`, queues it in `ToDisplayInSidePosition` and adds it to an unbounded list. `Update` drops entries that are `ToDestroy` or `Destroyed`. Nothing else in `RailRoute.dll` creates side notifications.
+- **Display.** `NotificationSidePanel.Update` dequeues everything each frame and creates a `NotificationItem` for each, skipping any already `Destroyed`.
+- **Item lifecycle.** `NotificationItem.Update` calls `Clear()` (destroys the GameObject, sets `Destroyed`) once `Notification.Destroyed` is set. The X button calls `Dismiss()` → `Clear()`. `NotificationController.Clear()` (level change) sets `Destroyed` on all of them.
+- **Delayed dismiss.** `Notification.Dismiss(int seconds = 2, bool playSuccessSound = true)` sets `ToDismissWithDelay`, and swaps `StatusText` for `DoneStatusText` if one is set (the mod sets none). On the item's **first frame on screen**, `DismissDelayed()` sets `ToDestroy` and calls `Invoke("Dismiss", DismissSeconds)`. So `ToDestroy` means "countdown running", not "about to disappear", and the timer starts when the notification is shown, not when it's created. The mod counts only `Destroyed` as gone.
+- **Real time.** Nothing in `RailRoute.dll` assigns `Time.timeScale`, so `Invoke` delays run in real seconds, paused or not.
+- **Re-check after game updates:** that `Time.timeScale` is still never assigned, that `DismissDelayed` still sets `ToDestroy` and `Clear` still sets `Destroyed`, and that `NotificationItem.Update` still clears on `Destroyed`.
+
+### Notification test round (2026-10-01, macOS via Steam, Haarlem Endless)
+
+Local 0.6.7 server with a Haarlem seed (`03478248068429402281`, no password) on port 38281. Every step was confirmed on screen by the user and against `Player.log`.
+
+- **Expiry.** With the defaults (`notifications 10s, limit 5` in the settings line), "Archipelago connected" disappeared by itself after about 10 seconds.
+- **Paused.** With the game paused, "Check sent" and "Received … from Player" still disappeared after about 10 seconds.
+- **Limit (failed, fixed).** Five quick purchases (ten notifications) all stayed on screen. The budget first counted `ToDestroy` as gone, and every expiring notification has it from its first frame, so none counted. With only `Destroyed` counted, four quick purchases kept at most five on screen, the oldest went first and the rest still expired.
+- **Sticky.** After stopping the server, "Archipelago disconnected" stayed past 10 seconds while routine ones expired, and its X dismissed it.
+- **Settings.** `"notificationSeconds": 0, "notificationLimit": 3` logged `notifications off, limit 3`. Connected to the server, the notifications stopped expiring and at most three were on screen. (Offline, a purchase only logs `Check recorded` and shows no notification, so this step needs a server.)

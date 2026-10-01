@@ -13,7 +13,7 @@ Status: ✅ done · 🔜 next · ⬜ planned
 | M2 | APWorld v0 | A minimal Python `rail_route` world that generates a playable seed | ✅ | `2026-09-27-add-apworld-v0` |
 | M3 | Client ↔ server | The mod connects to an Archipelago server, sends checks and receives items | ✅ | `2026-09-27-client-split-flags`, `2026-09-27-client-ap-connection`, `2026-10-01-client-seed-binding` |
 | M4 | More checks and items | More locations, plus filler and trap items | ⬜ | |
-| M5 | Playable release | Anyone can install and play a full seed from a release zip | ⬜ | `2026-10-01-client-goal-completion` |
+| M5 | Playable release | Anyone can install and play a full seed from a release zip | ⬜ | `2026-10-01-client-goal-completion`, `2026-10-01-client-notification-limits` |
 | M6 | Extras | Optional features beyond a complete game | ⬜ | |
 
 ## Milestone notes
@@ -62,6 +62,8 @@ Status: ✅ done · 🔜 next · ⬜ planned
 ### M5 — Playable release
 - An in-game connect screen.
 - ✅ Goal completion reported to the server: the Endless-complete star earned live, or from a save bound to the seed, including a goal left pending offline in an earlier game run. A star from before the binding is never sent (`client-goal-completion`, `client-seed-binding`, FINDINGS.md "Goal completion").
+- ✅ Side notifications don't pile up: routine ones expire after `notificationSeconds` (10), warnings and the goal stay until dismissed, and at most `notificationLimit` (5) are shown (`client-notification-limits`, FINDINGS.md "Side notifications").
+- Follow-up: combine a burst of "Received …" notifications into one line.
 - A release zip per OS (`mods/RailRouteArchipelago/` plus the `.apworld`).
 - A player setup guide. Linux paths confirmed.
 
